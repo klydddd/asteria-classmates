@@ -43,7 +43,7 @@
 - [x] Add background jobs for heavy tasks
 
 ## Phase 8: Demo UI / Visualization
-- [ ] Create dashboard pages
+- [ ] Create functional Dashboard and Demo pages
 - [ ] Build the demo flow (upload -> transcribe -> evaluate)
 - [ ] Show pipeline status cards
 
@@ -55,3 +55,8 @@
 ## Phase 10: Final Hackathon Presentation
 - [ ] Prepare live demo script
 - [ ] Prepare judging-criteria talking points
+
+## Future Implementations
+
+### Additional Dashboard Pages
+- [ ] Create Collect, Annotate, Dataset, Train, Evaluate, and Docs pages

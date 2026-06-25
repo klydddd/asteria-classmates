@@ -618,22 +618,20 @@ Heavy tasks:
 
 # Phase 8 — Demo UI / Visualization
 
+**Current scope:** Build the functional Dashboard and Demo pages. The remaining
+pipeline-specific pages are deferred under Future Implementations.
+
 ## 8.1 Create dashboard pages
 
-Suggested pages:
+Build these pages now:
 
 ```text
 Dashboard
-Collect
-Annotate
-Dataset
-Train
-Evaluate
 Demo
-Docs
 ```
 
-**Done when:** Users can visually follow the pipeline.
+**Done when:** Users can open a dashboard overview and enter the working demo
+flow.
 
 ## 8.2 Build the demo flow
 
@@ -664,6 +662,24 @@ Model Version
 ```
 
 **Done when:** Dashboard clearly communicates technical progress.
+
+---
+
+# Future Implementations — Additional Dashboard Pages
+
+Add dedicated pages for:
+
+```text
+Collect
+Annotate
+Dataset
+Train
+Evaluate
+Docs
+```
+
+These pages will expose the broader pipeline after the Dashboard and Demo MVP
+is complete.
 
 ---
 
