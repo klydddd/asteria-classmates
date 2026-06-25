@@ -329,6 +329,11 @@ rejected
 
 ## 4.1 Generate final dataset folder
 
+**Status: Complete (June 25, 2026).** `bosesph build-dataset` filters approved
+clips, copies audio to `audio/`, writes `metadata.csv` with assigned splits,
+and generates `train.csv`, `validation.csv`, `test.csv`, `dataset_stats.json`,
+and `dataset_card.md`.
+
 Output structure:
 
 ```text
@@ -347,6 +352,11 @@ outputs/dataset/
 
 ## 4.2 Split dataset into train/validation/test
 
+**Status: Complete (June 25, 2026).** The builder uses a speaker-aware greedy
+algorithm: clips are grouped by `speaker_id`, sorted by group size, and each
+group is assigned to the split bucket furthest below its target count. Default
+ratios are 70/15/15 and configurable via `--train`, `--val`, `--test` flags.
+
 Recommended split:
 
 ```text
@@ -362,6 +372,12 @@ Important rule:
 **Done when:** Split files are generated correctly.
 
 ## 4.3 Generate dataset statistics
+
+**Status: Complete (June 25, 2026).** `dataset_stats.json` contains total clips,
+total duration (with display string), total speakers, average clip length,
+language distribution, per-split breakdowns (clips, speakers, duration), and
+source status counts (approved, pending, needs_review, rejected).
+`dataset_card.md` is auto-generated from the statistics.
 
 Show:
 

@@ -22,9 +22,9 @@
 - [x] Add reviewer validation flow
 
 ## Phase 4: Dataset Builder
-- [ ] Generate final dataset folder structure
-- [ ] Split dataset into train (70%), validation (15%), test (15%)
-- [ ] Generate dataset statistics
+- [x] Generate final dataset folder structure
+- [x] Split dataset into train (70%), validation (15%), test (15%)
+- [x] Generate dataset statistics
 
 ## Phase 5: Baseline ASR and Benchmark
 - [ ] Run baseline ASR model

@@ -9,6 +9,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from bosesph.dataset import DatasetBuildError, build_dataset
 from bosesph.ingestion import IngestionError, import_pld_session
 from bosesph.metadata import MetadataRecord, Severity, ValidationReport
 from bosesph.metadata import validate_metadata_csv as validate_csv
@@ -78,6 +79,24 @@ def build_parser() -> ArgumentParser:
         help="interactively review pending dataset clips",
     )
     review_parser.add_argument("dataset", type=Path)
+
+    build_parser = commands.add_parser(
+        "build-dataset",
+        help="build final dataset package from reviewed clips",
+    )
+    build_parser.add_argument("dataset", type=Path)
+    build_parser.add_argument("--output", type=Path, required=True)
+    build_parser.add_argument(
+        "--train", type=float, default=0.70, dest="train_ratio"
+    )
+    build_parser.add_argument(
+        "--val", type=float, default=0.15, dest="val_ratio"
+    )
+    build_parser.add_argument(
+        "--test", type=float, default=0.15, dest="test_ratio"
+    )
+    build_parser.add_argument("--seed", type=int, default=42)
+    build_parser.add_argument("--overwrite", action="store_true")
     return parser
 
 
@@ -180,6 +199,39 @@ def _run_review(dataset: Path) -> int:
     return 0
 
 
+def _run_build_dataset(
+    dataset: Path,
+    output: Path,
+    *,
+    train_ratio: float,
+    val_ratio: float,
+    test_ratio: float,
+    seed: int,
+    overwrite: bool,
+) -> int:
+    try:
+        report = build_dataset(
+            dataset,
+            output,
+            train_ratio=train_ratio,
+            val_ratio=val_ratio,
+            test_ratio=test_ratio,
+            seed=seed,
+            overwrite=overwrite,
+        )
+    except DatasetBuildError as error:
+        _print_input_error(str(error), "text")
+        return 2
+    print(f"Built dataset at {report.output}")
+    print(f"Total clips: {report.total_clips}")
+    print(f"Train: {report.train_clips}")
+    print(f"Validation: {report.validation_clips}")
+    print(f"Test: {report.test_clips}")
+    print(f"Speakers: {report.speakers}")
+    print(f"Excluded (non-approved): {report.excluded}")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return its documented process exit code."""
     try:
@@ -197,6 +249,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_normalize_transcripts(args.dataset)
     if args.command == "review":
         return _run_review(args.dataset)
+    if args.command == "build-dataset":
+        return _run_build_dataset(
+            args.dataset,
+            args.output,
+            train_ratio=args.train_ratio,
+            val_ratio=args.val_ratio,
+            test_ratio=args.test_ratio,
+            seed=args.seed,
+            overwrite=args.overwrite,
+        )
     return 2
 
 
