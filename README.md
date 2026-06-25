@@ -4,7 +4,37 @@ BosesPH Toolkit is an open-source developer pipeline for turning raw Philippine-
 
 ## Status
 
-The project is currently at the repository foundation stage. The directory boundaries and project policies are defined, but the Next.js application, FastAPI service, Python ML pipeline, dependencies, and executable commands have not yet been scaffolded.
+Phase 1.1 and 1.2 dataset design are implemented. The repository now provides a
+Python package, metadata model, aggregate CSV validator, JSON Schema export,
+sample templates, and Kapampangan transcription guidance. Audio ingestion
+remains Phase 2 work, and Phase 1.3 remains pending until consented clips and
+matching metadata are prepared.
+
+## Python Setup
+
+Python 3.10 or newer is required.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+```
+
+Validate metadata or regenerate the checked-in schema:
+
+```bash
+bosesph validate-metadata sample_data/metadata_template.csv
+bosesph validate-metadata metadata.csv --format json
+bosesph export-metadata-schema --output docs/metadata.schema.json
+```
+
+Development verification:
+
+```bash
+ruff check .
+black --check .
+pytest
+```
 
 ## Planned Architecture
 
@@ -17,12 +47,15 @@ The project is currently at the repository foundation stage. The directory bound
 - `sample_data/` — small, redistributable test and demonstration fixtures.
 - `scripts/` — repeatable development and data-processing utilities.
 - `outputs/` — generated datasets, reports, and model artifacts; contents are ignored.
+- `src/bosesph/` — reusable metadata models, validators, and CLI.
 
 ## Project Documents
 
 - [Requirements](Requirements.md) — technical requirements and recommended stack.
 - [Tasks](Tasks.md) — phased implementation roadmap.
 - [Contributor Guide](AGENTS.md) — repository conventions and data-handling rules.
+- [Dataset Format](docs/dataset_format.md) — CSV fields, validation rules, and examples.
+- [Transcription Guidelines](docs/transcription_guidelines.md) — Kapampangan transcription and review policy.
 
 ## Data Responsibility
 

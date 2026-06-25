@@ -1,0 +1,2 @@
+audio_id,file_path,transcript,language,speaker_id,duration_seconds,sample_rate,split,quality_status,source_id,region,speaker_age_group,speaker_gender,recording_device,environment,code_switch_languages,reviewer_notes
+pam_000001,audio/pam_000001.wav,Masanting ya ing aldo.,pam,spk_001,8.5,16000,unassigned,pending,example_source,Pampanga,adult,unspecified,unspecified,quiet indoor,,"Template only; no audio included."

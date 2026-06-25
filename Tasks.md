@@ -112,6 +112,8 @@ bosesph-toolkit/
 
 ## 1.1 Define the required metadata fields
 
+**Status: Complete (June 25, 2026).**
+
 Create a standard metadata schema.
 
 Recommended columns:
@@ -123,6 +125,8 @@ audio_id,file_path,transcript,language,region,speaker_id,speaker_age_group,speak
 **Done when:** The team has a documented `metadata.csv` format.
 
 ## 1.2 Define transcript rules
+
+**Status: Complete (June 25, 2026).**
 
 Create rules for writing transcripts consistently.
 
@@ -147,6 +151,9 @@ Example tags:
 **Done when:** `docs/transcription_guidelines.md` exists.
 
 ## 1.3 Prepare sample data
+
+**Status: Pending.** The repository contains templates only. Import 30–100
+consented Kapampangan clips and matching metadata before marking this complete.
 
 For the MVP, prepare at least:
 

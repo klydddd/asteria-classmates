@@ -16,7 +16,19 @@ Keep reusable logic out of route handlers and UI components. Place tests near th
 
 ## Build, Test, and Development Commands
 
-No executable project exists yet. When adding components, expose these commands and document deviations in `README.md`:
+Create a Python 3.10+ virtual environment and install the package with
+`python -m pip install -e ".[dev]"`. Current Python commands are:
+
+```bash
+bosesph validate-metadata sample_data/metadata_template.csv
+bosesph export-metadata-schema --output docs/metadata.schema.json
+ruff check .
+black --check .
+pytest
+```
+
+When adding the planned web or API components, expose these commands and
+document deviations in `README.md`:
 
 ```bash
 pnpm install && pnpm dev       # install and run the Next.js app

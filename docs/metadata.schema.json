@@ -1,0 +1,178 @@
+{
+  "$defs": {
+    "DatasetSplit": {
+      "description": "Supported dataset partitions.",
+      "enum": [
+        "unassigned",
+        "train",
+        "validation",
+        "test"
+      ],
+      "title": "DatasetSplit",
+      "type": "string"
+    },
+    "QualityStatus": {
+      "description": "Supported metadata review states.",
+      "enum": [
+        "pending",
+        "approved",
+        "needs_review",
+        "rejected"
+      ],
+      "title": "QualityStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One audio clip's complete metadata.",
+  "properties": {
+    "audio_id": {
+      "title": "Audio Id",
+      "type": "string"
+    },
+    "file_path": {
+      "title": "File Path",
+      "type": "string"
+    },
+    "transcript": {
+      "title": "Transcript",
+      "type": "string"
+    },
+    "language": {
+      "title": "Language",
+      "type": "string"
+    },
+    "speaker_id": {
+      "title": "Speaker Id",
+      "type": "string"
+    },
+    "duration_seconds": {
+      "exclusiveMinimum": 0,
+      "title": "Duration Seconds",
+      "type": "number"
+    },
+    "sample_rate": {
+      "exclusiveMinimum": 0,
+      "title": "Sample Rate",
+      "type": "integer"
+    },
+    "split": {
+      "$ref": "#/$defs/DatasetSplit"
+    },
+    "quality_status": {
+      "$ref": "#/$defs/QualityStatus"
+    },
+    "source_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Id"
+    },
+    "region": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Region"
+    },
+    "speaker_age_group": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Speaker Age Group"
+    },
+    "speaker_gender": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Speaker Gender"
+    },
+    "recording_device": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Recording Device"
+    },
+    "environment": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Environment"
+    },
+    "code_switch_languages": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Code Switch Languages"
+    },
+    "reviewer_notes": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reviewer Notes"
+    }
+  },
+  "required": [
+    "audio_id",
+    "file_path",
+    "transcript",
+    "language",
+    "speaker_id",
+    "duration_seconds",
+    "sample_rate",
+    "split",
+    "quality_status"
+  ],
+  "title": "MetadataRecord",
+  "type": "object"
+}

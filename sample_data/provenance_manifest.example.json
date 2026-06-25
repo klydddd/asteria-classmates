@@ -1,0 +1,12 @@
+{
+  "dataset_id": "replace-with-dataset-id",
+  "title": "Example Kapampangan speech source",
+  "source_url": "https://example.org/replace-me",
+  "license": "Replace with the exact redistribution license",
+  "collected_by": "Replace with organization or project name",
+  "consent_basis": "Replace with documented recording and redistribution consent",
+  "personal_data_reviewed": false,
+  "reviewed_by": "Replace with reviewer identifier",
+  "reviewed_at": "YYYY-MM-DD",
+  "notes": "Do not import data until license and consent have been verified."
+}
