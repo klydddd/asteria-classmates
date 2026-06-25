@@ -1,1 +1,49 @@
 .worktrees/
+
+# Operating system and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Node.js and frontend builds
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Logs and local databases
+*.log
+*.sqlite
+*.sqlite3
+*.db
+
+# Generated datasets, reports, and model artifacts
+outputs/*
+!outputs/.gitkeep
+sample_data/*
+!sample_data/.gitkeep
+*.ckpt
+*.pt
+*.pth
+*.safetensors
+
+# Incomplete downloads
+*.crdownload
+*.part
