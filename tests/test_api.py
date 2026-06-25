@@ -326,6 +326,7 @@ def test_project_status_ignores_malformed_artifacts_independently(
         {"wer": 0.91, "cer": False},
         {"wer": float("inf"), "cer": 0.52},
         {"wer": 0.91, "cer": float("nan")},
+        {"wer": 10**400, "cer": 0.52},
     ],
 )
 def test_project_status_rejects_invalid_metric_artifacts(

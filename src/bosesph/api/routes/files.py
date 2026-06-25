@@ -27,22 +27,25 @@ def _read_json(path: Path) -> dict[str, object] | None:
     return data if isinstance(data, dict) else None
 
 
+def _finite_float(value: object) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        converted = float(value)
+    except OverflowError:
+        return None
+    return converted if math.isfinite(converted) else None
+
+
 def _metric_summary(path: Path) -> dict[str, float] | None:
     data = _read_json(path)
     if data is None or "wer" not in data or "cer" not in data:
         return None
-    wer = data["wer"]
-    cer = data["cer"]
-    if (
-        isinstance(wer, bool)
-        or not isinstance(wer, (int, float))
-        or not math.isfinite(wer)
-        or isinstance(cer, bool)
-        or not isinstance(cer, (int, float))
-        or not math.isfinite(cer)
-    ):
+    wer = _finite_float(data["wer"])
+    cer = _finite_float(data["cer"])
+    if wer is None or cer is None:
         return None
-    return {"wer": float(wer), "cer": float(cer)}
+    return {"wer": wer, "cer": cer}
 
 
 @router.get("/project-status", response_model=ProjectStatus)
