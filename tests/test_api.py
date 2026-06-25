@@ -486,6 +486,44 @@ def test_demo_options_ignore_nested_model_symlink_outside_workspace(
     assert response.json()["models"][1]["available"] is False
 
 
+def test_demo_options_ignore_external_model_config_symlink(
+    client: tuple[TestClient, Path],
+    tmp_path: Path,
+) -> None:
+    test_client, workspace = client
+    outside_config = tmp_path / "config.json"
+    outside_config.write_text("{}", encoding="utf-8")
+    candidate = workspace / "model" / "local"
+    model_dir = candidate / "model"
+    model_dir.mkdir(parents=True)
+    (candidate / "model_card.md").write_text("# Local", encoding="utf-8")
+    (model_dir / "config.json").symlink_to(outside_config)
+
+    response = test_client.get("/demo/options")
+
+    assert response.status_code == 200
+    assert response.json()["models"][1]["available"] is False
+
+
+def test_demo_options_ignore_internal_model_symlink(
+    client: tuple[TestClient, Path],
+) -> None:
+    test_client, workspace = client
+    shared_config = workspace / "shared-config.json"
+    shared_config.parent.mkdir(parents=True)
+    shared_config.write_text("{}", encoding="utf-8")
+    candidate = workspace / "model" / "local"
+    model_dir = candidate / "model"
+    model_dir.mkdir(parents=True)
+    (candidate / "model_card.md").write_text("# Local", encoding="utf-8")
+    (model_dir / "config.json").symlink_to(shared_config)
+
+    response = test_client.get("/demo/options")
+
+    assert response.status_code == 200
+    assert response.json()["models"][1]["available"] is False
+
+
 @pytest.mark.parametrize(
     "training_config",
     [None, "{invalid", "[]", json.dumps({"language": 7})],

@@ -32,6 +32,18 @@ def _is_within_workspace(path: Path, workspace: Path) -> bool:
     return path.resolve().is_relative_to(workspace)
 
 
+def _is_safe_model_tree(model_dir: Path, workspace: Path) -> bool:
+    try:
+        if model_dir.is_symlink() or not _is_within_workspace(model_dir, workspace):
+            return False
+        return all(
+            not entry.is_symlink() and _is_within_workspace(entry, workspace)
+            for entry in model_dir.rglob("*")
+        )
+    except OSError:
+        return False
+
+
 def _find_finetuned_model(workspace: Path) -> Path | None:
     model_root = workspace / "model"
     if not model_root.is_dir():
@@ -44,6 +56,7 @@ def _find_finetuned_model(workspace: Path) -> Path | None:
             if child.is_dir()
             and _is_within_workspace(child, workspace)
             and _is_within_workspace(child / "model", workspace)
+            and _is_safe_model_tree(child / "model", workspace)
             and (child / "model_card.md").is_file()
             and (child / "model" / "config.json").is_file()
         ),
