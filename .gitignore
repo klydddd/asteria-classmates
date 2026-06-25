@@ -52,3 +52,6 @@ sample_data/*
 
 PLD/
 1773845964108-up-dsp-pld.tar.gz
+
+# AI Agents
+.ai/
