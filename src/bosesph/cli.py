@@ -9,8 +9,10 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from bosesph.ingestion import IngestionError, import_pld_session
 from bosesph.metadata import MetadataRecord, Severity, ValidationReport
 from bosesph.metadata import validate_metadata_csv as validate_csv
+from bosesph.pld import PldParseError
 
 
 class ArgumentParser(argparse.ArgumentParser):
@@ -54,6 +56,14 @@ def build_parser() -> ArgumentParser:
         help="export the MetadataRecord JSON Schema",
     )
     schema_parser.add_argument("--output", type=Path, required=True)
+
+    import_parser = commands.add_parser(
+        "import-pld",
+        help="import and standardize one PLD session directory",
+    )
+    import_parser.add_argument("source", type=Path)
+    import_parser.add_argument("--output", type=Path, required=True)
+    import_parser.add_argument("--overwrite", action="store_true")
     return parser
 
 
@@ -115,6 +125,19 @@ def _run_export_schema(output: Path) -> int:
     return 0
 
 
+def _run_import_pld(source: Path, output: Path, overwrite: bool) -> int:
+    try:
+        report = import_pld_session(source, output, overwrite=overwrite)
+    except (IngestionError, PldParseError, OSError) as error:
+        _print_input_error(str(error), "text")
+        return 2
+    print(f"Wrote standardized dataset to {output}")
+    print(f"Pending: {report.counts.pending}")
+    print(f"Needs review: {report.counts.needs_review}")
+    print(f"Rejected: {report.counts.rejected}")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return its documented process exit code."""
     try:
@@ -126,6 +149,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_validate(args.csv, args.output_format)
     if args.command == "export-metadata-schema":
         return _run_export_schema(args.output)
+    if args.command == "import-pld":
+        return _run_import_pld(args.source, args.output, args.overwrite)
     return 2
 
 

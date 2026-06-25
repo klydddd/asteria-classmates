@@ -152,8 +152,9 @@ Example tags:
 
 ## 1.3 Prepare sample data
 
-**Status: Pending.** The repository contains templates only. Import 30–100
-consented Kapampangan clips and matching metadata before marking this complete.
+**Status: Complete (June 25, 2026).** `PLD/PAM/0400` provides 397 Kapampangan
+WAV clips with 397 matching transcript rows from one PLD recording session.
+The Phase 2 importer uses this session as the integration dataset.
 
 For the MVP, prepare at least:
 
@@ -171,6 +172,14 @@ For the MVP, prepare at least:
 
 ## 2.1 Build audio upload/import function
 
+**Status: Complete (June 25, 2026).** The `bosesph import-pld` command imports
+one PLD session directory, parses session metadata and transcript rows, matches
+WAV files, and writes `metadata.csv` plus `ingestion_report.json`.
+
+The current MVP implements the local-folder path for PLD PCM WAV sessions.
+Generic CSV manifests, compressed formats, and web uploads remain later
+extensions rather than Phase 2 requirements for the selected Option A scope.
+
 Input options:
 
 - upload audio through web UI,
@@ -186,6 +195,11 @@ Accepted formats:
 **Done when:** The system can read multiple raw audio files and list them in a queue.
 
 ## 2.2 Validate uploaded audio
+
+**Status: Complete (June 25, 2026).** Ingestion checks PCM WAV structure,
+duration, sample rate, channels, sample width, empty audio, corruption, silence,
+quiet audio, missing WAV files, and missing transcripts. Clip-level failures
+are reported without aborting the batch.
 
 Check:
 
@@ -210,6 +224,9 @@ rejected
 
 ## 2.3 Convert audio to standard format
 
+**Status: Complete (June 25, 2026).** Readable clips are copied or converted to
+mono, 16 kHz, signed 16-bit PCM WAV while source files remain unchanged.
+
 Recommended standard:
 
 ```text
@@ -225,6 +242,10 @@ outputs/dataset/audio_clean/
 **Done when:** Raw audio files are converted to clean standardized audio files.
 
 ## 2.4 Rename files consistently
+
+**Status: Complete (June 25, 2026).** Entries are sorted by source filename and
+renamed deterministically using the Kapampangan ISO 639-3 prefix:
+`pam_000001.wav`, `pam_000002.wav`, and so on.
 
 Example filename format:
 

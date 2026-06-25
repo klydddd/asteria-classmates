@@ -4,11 +4,10 @@ BosesPH Toolkit is an open-source developer pipeline for turning raw Philippine-
 
 ## Status
 
-Phase 1.1 and 1.2 dataset design are implemented. The repository now provides a
-Python package, metadata model, aggregate CSV validator, JSON Schema export,
-sample templates, and Kapampangan transcription guidance. Audio ingestion
-remains Phase 2 work, and Phase 1.3 remains pending until consented clips and
-matching metadata are prepared.
+Phase 1 dataset design and Phase 2 PLD audio ingestion are implemented. The
+toolkit parses PLD session logs, matches transcripts to WAV files, validates
+audio, standardizes usable clips to mono 16 kHz 16-bit PCM, assigns
+deterministic IDs, and generates metadata and ingestion reports.
 
 ## Python Setup
 
@@ -27,6 +26,33 @@ bosesph validate-metadata sample_data/metadata_template.csv
 bosesph validate-metadata metadata.csv --format json
 bosesph export-metadata-schema --output docs/metadata.schema.json
 ```
+
+Import one PLD recording session:
+
+```bash
+bosesph import-pld PLD/PAM/0400 --output outputs/dataset
+```
+
+Use `--overwrite` to replace a previously generated output directory:
+
+```bash
+bosesph import-pld PLD/PAM/0400 \
+  --output outputs/dataset \
+  --overwrite
+```
+
+Generated output contains:
+
+```text
+outputs/dataset/
+  audio_clean/           # standardized pam_*.wav files
+  metadata.csv           # pending and needs-review clips
+  ingestion_report.json  # all accepted, review, and rejected results
+```
+
+Non-quiet clips between 5 and 15 seconds are marked `pending`. Other readable
+clips are preserved as `needs_review`; corrupt, empty, silent, or unmatched
+inputs are recorded as `rejected`.
 
 Development verification:
 

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from bosesph.cli import main
 from bosesph.metadata import MetadataRecord
+from tests.audio_fixtures import write_pcm_wav
 
 
 def write_valid_csv(path: Path, *, duration: str = "8") -> None:
@@ -107,3 +108,79 @@ def test_sample_metadata_template_is_valid() -> None:
 
     assert report.row_count == 1
     assert report.error_count == 0
+
+
+def write_pld_session(directory: Path) -> None:
+    directory.mkdir()
+    (directory / "session.log").write_text(
+        'SessionID = "session-01"\n'
+        'SessionEnvironment = "room"\n'
+        'SpeakerID = "0400"\n'
+        'SpeakerGender = "male"\n'
+        'clip.wav "prompt.txt" "Masanting ya ing aldo."\n',
+        encoding="utf-8",
+    )
+    write_pcm_wav(directory / "clip.wav", duration=6)
+
+
+def test_import_pld_cli_generates_output(
+    tmp_path: Path,
+    capsys: object,
+) -> None:
+    source = tmp_path / "source"
+    output = tmp_path / "dataset"
+    write_pld_session(source)
+
+    exit_code = main(["import-pld", str(source), "--output", str(output)])
+    captured = capsys.readouterr()  # type: ignore[attr-defined]
+
+    assert exit_code == 0
+    assert "Pending: 1" in captured.out
+    assert "Needs review: 0" in captured.out
+    assert "Rejected: 0" in captured.out
+    assert (output / "metadata.csv").exists()
+
+
+def test_import_pld_cli_overwrite_and_input_errors(
+    tmp_path: Path,
+    capsys: object,
+) -> None:
+    source = tmp_path / "source"
+    output = tmp_path / "dataset"
+    write_pld_session(source)
+    output.mkdir()
+    (output / "stale.txt").write_text("stale", encoding="utf-8")
+
+    refused = main(["import-pld", str(source), "--output", str(output)])
+    refused_output = capsys.readouterr()  # type: ignore[attr-defined]
+    overwritten = main(
+        [
+            "import-pld",
+            str(source),
+            "--output",
+            str(output),
+            "--overwrite",
+        ]
+    )
+
+    assert refused == 2
+    assert "Input error:" in refused_output.err
+    assert overwritten == 0
+    assert not (output / "stale.txt").exists()
+
+
+def test_import_pld_cli_missing_source_returns_exit_two(
+    tmp_path: Path,
+    capsys: object,
+) -> None:
+    exit_code = main(
+        [
+            "import-pld",
+            str(tmp_path / "missing"),
+            "--output",
+            str(tmp_path / "dataset"),
+        ]
+    )
+
+    assert exit_code == 2
+    assert "Input error:" in capsys.readouterr().err  # type: ignore[attr-defined]
