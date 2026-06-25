@@ -23,11 +23,11 @@
 **Files:**
 - Create: `.gitignore`
 
-- [ ] **Step 1: Create `.gitignore`**
+- [x] **Step 1: Create `.gitignore`**
 
 Add explicit rules for macOS/editor state, environment files, Node/Python artifacts, local databases, generated outputs, datasets, model weights, logs, caches, and incomplete browser downloads. Keep `.gitkeep` exceptions for `sample_data/` and `outputs/`.
 
-- [ ] **Step 2: Verify sensitive and generated files are ignored**
+- [x] **Step 2: Verify sensitive and generated files are ignored**
 
 Run:
 
@@ -39,7 +39,7 @@ git check-ignore -v sample_data/private.wav
 
 Expected: each path is matched by `.gitignore`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add .gitignore
@@ -58,11 +58,11 @@ git commit -m "chore: add repository ignore policy"
 - Create: `scripts/.gitkeep`
 - Create: `outputs/.gitkeep`
 
-- [ ] **Step 1: Add placeholder files**
+- [x] **Step 1: Add placeholder files**
 
 Create each listed `.gitkeep` as an empty file. The existing `docs/` directory already contains the design and plan documents and needs no placeholder.
 
-- [ ] **Step 2: Verify every planned directory exists**
+- [x] **Step 2: Verify every planned directory exists**
 
 Run:
 
@@ -80,7 +80,7 @@ test -d outputs
 
 Expected: exit status 0.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apps ml sample_data scripts outputs
@@ -93,11 +93,11 @@ git commit -m "chore: create initial repository structure"
 - Create: `LICENSE`
 - Create: `README.md`
 
-- [ ] **Step 1: Add the license**
+- [x] **Step 1: Add the license**
 
 Create `LICENSE` with the canonical Apache License, Version 2.0 text published at `https://www.apache.org/licenses/LICENSE-2.0`.
 
-- [ ] **Step 2: Add the README**
+- [x] **Step 2: Add the README**
 
 Document:
 
@@ -108,7 +108,7 @@ Document:
 - Links to `Requirements.md`, `Tasks.md`, and `AGENTS.md`.
 - Apache 2.0 licensing.
 
-- [ ] **Step 3: Verify documentation**
+- [x] **Step 3: Verify documentation**
 
 Run:
 
@@ -120,7 +120,7 @@ grep -F "repository foundation" README.md
 
 Expected: each command prints a matching line.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add LICENSE README.md
@@ -135,14 +135,14 @@ git commit -m "docs: add project overview and license"
 - Track unchanged: `Tasks.md`
 - Track: `docs/superpowers/plans/2026-06-25-phase-0-3-repository-foundation.md`
 
-- [ ] **Step 1: Add existing project documents and this plan**
+- [x] **Step 1: Add existing project documents and this plan**
 
 ```bash
 git add AGENTS.md Requirements.md Tasks.md docs/superpowers/plans/2026-06-25-phase-0-3-repository-foundation.md
 git commit -m "docs: add project requirements and contributor guidance"
 ```
 
-- [ ] **Step 2: Run final repository checks**
+- [x] **Step 2: Run final repository checks**
 
 ```bash
 git rev-parse --is-inside-work-tree
@@ -160,7 +160,7 @@ Expected:
 - The incomplete download is ignored.
 - All planned directories appear.
 
-- [ ] **Step 3: Confirm scope stayed within Phase 0.3**
+- [x] **Step 3: Confirm scope stayed within Phase 0.3**
 
 Run:
 
