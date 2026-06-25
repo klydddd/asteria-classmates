@@ -34,6 +34,14 @@ class ReviewSummary(BaseModel):
     quit: bool = False
 
 
+class ApproveAllResult(BaseModel):
+    """Result of approving all reviewable clips at once."""
+
+    approved: int = 0
+    skipped_missing_audio: int = 0
+    remaining: int = 0
+
+
 class ClipDecisionResult(BaseModel):
     """Result of applying one stateless review decision."""
 
@@ -167,6 +175,42 @@ def decide_clip(
     )
 
 
+def approve_all_clips(
+    dataset: str | Path,
+) -> ApproveAllResult:
+    """Approve all reviewable clips whose audio files exist."""
+    dataset_path = Path(dataset)
+    metadata_path = dataset_path / "metadata.csv"
+    try:
+        fieldnames, rows = _read_rows(metadata_path)
+        _validate_rows(rows)
+    except TranscriptDatasetError as error:
+        raise ReviewError(str(error)) from error
+
+    reviewable = {
+        QualityStatus.PENDING.value,
+        QualityStatus.NEEDS_REVIEW.value,
+    }
+    result = ApproveAllResult()
+    changed = False
+    for row in rows:
+        if row.get("quality_status") not in reviewable:
+            continue
+        audio_path = dataset_path / row["file_path"]
+        if not audio_path.is_file():
+            result.skipped_missing_audio += 1
+            continue
+        row["quality_status"] = QualityStatus.APPROVED.value
+        result.approved += 1
+        changed = True
+
+    if changed:
+        _checkpoint(metadata_path, fieldnames, rows)
+
+    result.remaining = _remaining(rows)
+    return result
+
+
 def review_dataset(
     dataset: str | Path,
     *,
@@ -195,12 +239,24 @@ def review_dataset(
             while True:
                 action = (
                     input_fn(
-                        "Action [a]pprove, needs [f]ix, [r]eject, [s]kip, [q]uit: "
+                        "Action [a]pprove, approve [A]ll,"
+                        " needs [f]ix, [r]eject, [s]kip, [q]uit: "
                     )
                     .strip()
-                    .lower()
                 )
-                if action in {"a", "approve"}:
+                if action in {"A", "approve_all"}:
+                    bulk = approve_all_clips(dataset_path)
+                    summary.approved += bulk.approved
+                    if bulk.skipped_missing_audio:
+                        output_fn(
+                            f"Skipped {bulk.skipped_missing_audio} clip(s)"
+                            " with missing audio."
+                        )
+                    output_fn(f"Approved {bulk.approved} clip(s).")
+                    summary.remaining = bulk.remaining
+                    return summary
+                action_lower = action.lower()
+                if action_lower in {"a", "approve"}:
                     if not audio_path.is_file():
                         output_fn("Cannot approve: audio file is missing.")
                         continue
@@ -208,7 +264,7 @@ def review_dataset(
                     _checkpoint(metadata_path, fieldnames, rows)
                     summary.approved += 1
                     break
-                if action in {"f", "fix", "needs_fix"}:
+                if action_lower in {"f", "fix", "needs_fix"}:
                     note = _required_note(input_fn, output_fn)
                     if "reviewer_notes" not in fieldnames:
                         fieldnames.append("reviewer_notes")
@@ -220,7 +276,7 @@ def review_dataset(
                     _checkpoint(metadata_path, fieldnames, rows)
                     summary.needs_fix += 1
                     break
-                if action in {"r", "reject"}:
+                if action_lower in {"r", "reject"}:
                     note = _required_note(input_fn, output_fn)
                     if "reviewer_notes" not in fieldnames:
                         fieldnames.append("reviewer_notes")
@@ -232,14 +288,14 @@ def review_dataset(
                     _checkpoint(metadata_path, fieldnames, rows)
                     summary.rejected += 1
                     break
-                if action in {"s", "skip"}:
+                if action_lower in {"s", "skip"}:
                     summary.skipped += 1
                     break
-                if action in {"q", "quit"}:
+                if action_lower in {"q", "quit"}:
                     summary.quit = True
                     summary.remaining = _remaining(rows)
                     return summary
-                output_fn("Unknown action. Choose a, f, r, s, or q.")
+                output_fn("Unknown action. Choose a, A, f, r, s, or q.")
     except KeyboardInterrupt:
         summary.quit = True
 

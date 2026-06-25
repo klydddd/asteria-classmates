@@ -37,6 +37,10 @@ class FineTuneConfig(BaseModel):
     learning_rate: float
     train_clips: int
     val_clips: int
+    use_lora: bool = False
+    lora_r: int = 16
+    lora_alpha: int = 32
+    lora_dropout: float = 0.05
 
 
 class FineTuneReport(BaseModel):
@@ -66,6 +70,17 @@ def _require_accelerate() -> Any:
     except ImportError as error:
         raise ASRError(
             f"accelerate is required for fine-tuning; install with: {_INSTALL_HINT}"
+        ) from error
+
+
+def _require_peft() -> Any:
+    try:
+        import peft  # noqa: F811
+
+        return peft
+    except ImportError as error:
+        raise ASRError(
+            f"peft is required for LoRA fine-tuning; install with: {_INSTALL_HINT}"
         ) from error
 
 
@@ -230,6 +245,11 @@ def _generate_model_card(
         """
         )
 
+    if config.use_lora:
+        method = f"LoRA (r={config.lora_r}, alpha={config.lora_alpha})"
+    else:
+        method = "Full fine-tuning"
+
     return textwrap.dedent(
         f"""\
         # BosesPH Fine-Tuned ASR Model
@@ -251,6 +271,7 @@ def _generate_model_card(
         | Max steps | {config.max_steps or "—"} |
         | Batch size | {config.batch_size} |
         | Learning rate | {config.learning_rate} |
+        | Method | {method} |
         {eval_section}
         ## Usage
 
@@ -304,6 +325,12 @@ def finetune_model(
     learning_rate: float = 1e-5,
     train_split: str = "train",
     eval_split: str = "validation",
+    gradient_checkpointing: bool = False,
+    optim: str = "adamw_torch",
+    use_lora: bool = True,
+    lora_r: int = 16,
+    lora_alpha: int = 32,
+    lora_dropout: float = 0.05,
     progress_fn: Callable[[str], None] | None = None,
 ) -> FineTuneReport:
     """Fine-tune a Whisper model on a built dataset.
@@ -352,6 +379,33 @@ def finetune_model(
     model.generation_config.task = "transcribe"
     model.generation_config.forced_decoder_ids = None
 
+    if gradient_checkpointing:
+        model.config.use_cache = False
+        model.gradient_checkpointing_enable(
+            gradient_checkpointing_kwargs={"use_reentrant": False}
+        )
+
+    # ------------------------------------------------------------------
+    # Apply LoRA adapter (if enabled)
+    # ------------------------------------------------------------------
+    if use_lora:
+        peft = _require_peft()
+        if gradient_checkpointing:
+            model.enable_input_require_grads()
+        lora_config = peft.LoraConfig(
+            r=lora_r,
+            lora_alpha=lora_alpha,
+            lora_dropout=lora_dropout,
+            target_modules=["q_proj", "v_proj"],
+            bias="none",
+        )
+        model = peft.get_peft_model(model, lora_config)
+        trainable, total = model.get_nb_trainable_parameters()
+        _log(
+            f"LoRA enabled: {trainable:,} trainable / {total:,} total params "
+            f"({100 * trainable / total:.1f}%)"
+        )
+
     # ------------------------------------------------------------------
     # Build datasets
     # ------------------------------------------------------------------
@@ -376,7 +430,11 @@ def finetune_model(
         "fp16": False,
         "remove_unused_columns": False,
         "report_to": "none",
+        "optim": optim,
     }
+
+    if use_lora:
+        training_args_kwargs["label_names"] = ["labels"]
 
     if max_steps is not None:
         training_args_kwargs["max_steps"] = max_steps
@@ -411,7 +469,12 @@ def finetune_model(
     # ------------------------------------------------------------------
     model_path = out_dir / "model"
     model_path.mkdir(parents=True, exist_ok=True)
-    trainer.save_model(str(model_path))
+    if use_lora:
+        merged = model.merge_and_unload()
+        merged.save_pretrained(str(model_path))
+        _log("Merged LoRA weights into base model")
+    else:
+        trainer.save_model(str(model_path))
     processor.save_pretrained(str(model_path))
     _log(f"Saved model to {model_path}")
 
@@ -427,6 +490,10 @@ def finetune_model(
         learning_rate=learning_rate,
         train_clips=len(train_clips),
         val_clips=len(val_clips),
+        use_lora=use_lora,
+        lora_r=lora_r,
+        lora_alpha=lora_alpha,
+        lora_dropout=lora_dropout,
     )
 
     config_path = out_dir / "training_config.json"

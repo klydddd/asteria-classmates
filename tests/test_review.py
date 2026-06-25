@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from bosesph.review import ReviewError, decide_clip, review_dataset
+from bosesph.review import ReviewError, approve_all_clips, decide_clip, review_dataset
 
 
 def metadata_row(**overrides: str) -> dict[str, str]:
@@ -304,3 +304,91 @@ def test_decide_clip_does_not_approve_missing_audio(tmp_path: Path) -> None:
 
     with pytest.raises(ReviewError, match="audio file is missing"):
         decide_clip(dataset, "pam_000001", "approve")
+
+
+# --- approve_all_clips tests ---
+
+
+def test_approve_all_clips_approves_pending_and_needs_review(tmp_path: Path) -> None:
+    dataset = tmp_path / "dataset"
+    write_dataset(
+        dataset,
+        [
+            metadata_row(),
+            metadata_row(
+                audio_id="pam_000002",
+                file_path="audio_clean/pam_000002.wav",
+                quality_status="needs_review",
+            ),
+            metadata_row(
+                audio_id="pam_000003",
+                file_path="audio_clean/pam_000003.wav",
+                quality_status="approved",
+            ),
+        ],
+    )
+
+    result = approve_all_clips(dataset)
+
+    assert result.approved == 2
+    assert result.skipped_missing_audio == 0
+    assert result.remaining == 0
+    statuses = [r["quality_status"] for r in read_rows(dataset)]
+    assert statuses == ["approved", "approved", "approved"]
+
+
+def test_approve_all_clips_skips_missing_audio(tmp_path: Path) -> None:
+    dataset = tmp_path / "dataset"
+    write_dataset(
+        dataset,
+        [
+            metadata_row(),
+            metadata_row(
+                audio_id="pam_000002",
+                file_path="audio_clean/pam_000002.wav",
+            ),
+        ],
+    )
+    (dataset / "audio_clean" / "pam_000002.wav").unlink()
+
+    result = approve_all_clips(dataset)
+
+    assert result.approved == 1
+    assert result.skipped_missing_audio == 1
+    assert result.remaining == 1
+    statuses = [r["quality_status"] for r in read_rows(dataset)]
+    assert statuses == ["approved", "pending"]
+
+
+def test_approve_all_clips_noop_when_none_reviewable(tmp_path: Path) -> None:
+    dataset = tmp_path / "dataset"
+    write_dataset(dataset, [metadata_row(quality_status="approved")])
+
+    result = approve_all_clips(dataset)
+
+    assert result.approved == 0
+    assert result.remaining == 0
+
+
+def test_review_interactive_approve_all(tmp_path: Path) -> None:
+    dataset = tmp_path / "dataset"
+    write_dataset(
+        dataset,
+        [
+            metadata_row(),
+            metadata_row(
+                audio_id="pam_000002",
+                file_path="audio_clean/pam_000002.wav",
+            ),
+        ],
+    )
+    input_fn, _ = scripted_input(["A"])
+    output: list[str] = []
+
+    summary = review_dataset(dataset, input_fn=input_fn, output_fn=output.append)
+
+    assert summary.approved == 2
+    assert summary.remaining == 0
+    statuses = [r["quality_status"] for r in read_rows(dataset)]
+    assert statuses == ["approved", "approved"]
+    assert any("Approved 2 clip(s)" in line for line in output)

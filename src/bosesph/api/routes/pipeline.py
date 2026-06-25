@@ -16,6 +16,8 @@ from fastapi import APIRouter, Request, UploadFile
 
 from bosesph.api.jobs import Job
 from bosesph.api.models import (
+    ApproveAllRequest,
+    ApproveAllResponse,
     BuildDatasetRequest,
     CompareRequest,
     EvaluateRequest,
@@ -139,6 +141,19 @@ def review_decision(
         body.decision,
         note=body.note,
     )
+    return result
+
+
+@router.post("/review/approve-all", response_model=ApproveAllResponse)
+def review_approve_all(
+    request: Request, body: ApproveAllRequest
+) -> ApproveAllResponse:
+    """Approve all reviewable clips whose audio files exist."""
+    from bosesph.review import approve_all_clips
+
+    ws = _workspace(request)
+    dataset = resolve_path(ws, body.dataset)
+    result = approve_all_clips(dataset)
     return result
 
 

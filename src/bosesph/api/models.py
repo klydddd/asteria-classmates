@@ -133,6 +133,20 @@ class ReviewDecisionResult(BaseModel):
     remaining_reviewable: int
 
 
+class ApproveAllRequest(BaseModel):
+    """Body for ``POST /review/approve-all``."""
+
+    dataset: str = Field(description="Relative path to dataset directory.")
+
+
+class ApproveAllResponse(BaseModel):
+    """Response for ``POST /review/approve-all``."""
+
+    approved: int
+    skipped_missing_audio: int
+    remaining: int
+
+
 class ProjectStatus(BaseModel):
     """Aggregated project state for ``GET /project-status``."""
 

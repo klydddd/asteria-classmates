@@ -191,6 +191,46 @@ def build_parser() -> ArgumentParser:
         dest="eval_split",
         help="split CSV for evaluation during training",
     )
+    finetune_parser.add_argument(
+        "--gradient-checkpointing",
+        action="store_true",
+        default=False,
+        dest="gradient_checkpointing",
+        help="trade compute for memory by recomputing activations during backward pass",
+    )
+    finetune_parser.add_argument(
+        "--optim",
+        default="adamw_torch",
+        help="optimizer (use 'adafactor' to reduce memory)",
+    )
+    finetune_parser.add_argument(
+        "--full",
+        action="store_false",
+        dest="use_lora",
+        default=True,
+        help="use full fine-tuning instead of LoRA (default: LoRA)",
+    )
+    finetune_parser.add_argument(
+        "--lora-r",
+        type=int,
+        default=16,
+        dest="lora_r",
+        help="LoRA rank (default: 16)",
+    )
+    finetune_parser.add_argument(
+        "--lora-alpha",
+        type=int,
+        default=32,
+        dest="lora_alpha",
+        help="LoRA alpha scaling factor (default: 32)",
+    )
+    finetune_parser.add_argument(
+        "--lora-dropout",
+        type=float,
+        default=0.05,
+        dest="lora_dropout",
+        help="LoRA dropout rate (default: 0.05)",
+    )
 
     compare_parser = commands.add_parser(
         "compare",
@@ -468,6 +508,12 @@ def _run_finetune(
     learning_rate: float,
     train_split: str,
     eval_split: str,
+    gradient_checkpointing: bool,
+    optim: str,
+    use_lora: bool,
+    lora_r: int,
+    lora_alpha: int,
+    lora_dropout: float,
 ) -> int:
     from bosesph.finetune import finetune_model
 
@@ -490,6 +536,12 @@ def _run_finetune(
             learning_rate=learning_rate,
             train_split=train_split,
             eval_split=eval_split,
+            gradient_checkpointing=gradient_checkpointing,
+            optim=optim,
+            use_lora=use_lora,
+            lora_r=lora_r,
+            lora_alpha=lora_alpha,
+            lora_dropout=lora_dropout,
             progress_fn=progress,
         )
     except ASRError as error:
@@ -601,6 +653,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             learning_rate=args.learning_rate,
             train_split=args.train_split,
             eval_split=args.eval_split,
+            gradient_checkpointing=args.gradient_checkpointing,
+            optim=args.optim,
+            use_lora=args.use_lora,
+            lora_r=args.lora_r,
+            lora_alpha=args.lora_alpha,
+            lora_dropout=args.lora_dropout,
         )
     if args.command == "compare":
         return _run_compare(args.baseline, args.finetuned, args.output)

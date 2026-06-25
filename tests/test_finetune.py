@@ -138,6 +138,41 @@ class TestFineTuneConfig:
         data = json.loads(config.model_dump_json())
         assert data["max_steps"] == 50
 
+    def test_lora_fields_roundtrip(self) -> None:
+        config = FineTuneConfig(
+            base_model="openai/whisper-tiny",
+            language="tl",
+            epochs=3,
+            max_steps=None,
+            batch_size=8,
+            learning_rate=1e-5,
+            train_clips=100,
+            val_clips=15,
+            use_lora=True,
+            lora_r=16,
+            lora_alpha=32,
+            lora_dropout=0.05,
+        )
+        raw = config.model_dump_json()
+        restored = FineTuneConfig.model_validate_json(raw)
+        assert restored == config
+        assert restored.use_lora is True
+        assert restored.lora_r == 16
+
+    def test_lora_defaults_when_omitted(self) -> None:
+        config = FineTuneConfig(
+            base_model="openai/whisper-tiny",
+            language="tl",
+            epochs=3,
+            max_steps=None,
+            batch_size=8,
+            learning_rate=1e-5,
+            train_clips=100,
+            val_clips=0,
+        )
+        assert config.use_lora is False
+        assert config.lora_r == 16
+
 
 class TestFineTuneReport:
     def test_json_roundtrip(self) -> None:
@@ -316,6 +351,40 @@ class TestGenerateModelCard:
         card = _generate_model_card(config)
         assert "## Evaluation" not in card
 
+    def test_includes_lora_method_when_enabled(self) -> None:
+        config = FineTuneConfig(
+            base_model="openai/whisper-tiny",
+            language="tl",
+            epochs=3,
+            max_steps=None,
+            batch_size=8,
+            learning_rate=1e-5,
+            train_clips=100,
+            val_clips=15,
+            use_lora=True,
+            lora_r=16,
+            lora_alpha=32,
+            lora_dropout=0.05,
+        )
+        card = _generate_model_card(config)
+        assert "LoRA" in card
+        assert "r=16" in card
+        assert "alpha=32" in card
+
+    def test_shows_full_finetuning_when_no_lora(self) -> None:
+        config = FineTuneConfig(
+            base_model="openai/whisper-tiny",
+            language="tl",
+            epochs=3,
+            max_steps=None,
+            batch_size=8,
+            learning_rate=1e-5,
+            train_clips=100,
+            val_clips=15,
+        )
+        card = _generate_model_card(config)
+        assert "Full fine-tuning" in card
+
     def test_includes_usage_snippet(self) -> None:
         config = FineTuneConfig(
             base_model="openai/whisper-tiny",
@@ -471,6 +540,12 @@ class TestFinetuneCLI:
                 "4",
                 "--learning-rate",
                 "2e-5",
+                "--lora-r",
+                "8",
+                "--lora-alpha",
+                "16",
+                "--lora-dropout",
+                "0.1",
             ]
         )
         assert args.base_model == "openai/whisper-tiny"
@@ -478,6 +553,26 @@ class TestFinetuneCLI:
         assert args.max_steps == 100
         assert args.batch_size == 4
         assert args.learning_rate == 2e-5
+        assert args.use_lora is True
+        assert args.lora_r == 8
+        assert args.lora_alpha == 16
+        assert args.lora_dropout == 0.1
+
+    def test_parser_lora_is_default(self) -> None:
+        from bosesph.cli import build_parser
+
+        args = build_parser().parse_args(
+            ["finetune", "/tmp/ds", "--output", "/tmp/out"]
+        )
+        assert args.use_lora is True
+
+    def test_parser_full_disables_lora(self) -> None:
+        from bosesph.cli import build_parser
+
+        args = build_parser().parse_args(
+            ["finetune", "/tmp/ds", "--output", "/tmp/out", "--full"]
+        )
+        assert args.use_lora is False
 
 
 # -----------------------------------------------------------------------

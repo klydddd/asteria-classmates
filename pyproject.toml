@@ -23,6 +23,7 @@ asr = [
 train = [
   "bosesph-toolkit[asr]",
   "accelerate>=0.26",
+  "peft>=0.10",
 ]
 api = [
   "fastapi>=0.110,<1",
