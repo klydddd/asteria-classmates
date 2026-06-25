@@ -34,6 +34,14 @@ class ReviewSummary(BaseModel):
     quit: bool = False
 
 
+class ClipDecisionResult(BaseModel):
+    """Result of applying one stateless review decision."""
+
+    audio_id: str
+    new_status: str
+    remaining_reviewable: int
+
+
 def _checkpoint(
     metadata_path: Path,
     fieldnames: list[str],
@@ -99,6 +107,64 @@ def _remaining(rows: list[dict[str, str]]) -> int:
         QualityStatus.NEEDS_REVIEW.value,
     }
     return sum(row.get("quality_status") in reviewable for row in rows)
+
+
+def decide_clip(
+    dataset: str | Path,
+    audio_id: str,
+    decision: str,
+    *,
+    note: str | None = None,
+) -> ClipDecisionResult:
+    """Apply one review decision without interactive terminal input."""
+    dataset_path = Path(dataset)
+    metadata_path = dataset_path / "metadata.csv"
+    try:
+        fieldnames, rows = _read_rows(metadata_path)
+        _validate_rows(rows)
+    except TranscriptDatasetError as error:
+        raise ReviewError(str(error)) from error
+
+    row = next((item for item in rows if item.get("audio_id") == audio_id), None)
+    if row is None:
+        raise ReviewError(f"audio_id not found: {audio_id}")
+
+    reviewable = {
+        QualityStatus.PENDING.value,
+        QualityStatus.NEEDS_REVIEW.value,
+    }
+    if row.get("quality_status") not in reviewable:
+        raise ReviewError(f"clip is already decided: {audio_id}")
+
+    normalized_note = note.strip() if note else ""
+    if decision == "approve":
+        audio_path = dataset_path / row["file_path"]
+        if not audio_path.is_file():
+            raise ReviewError(f"audio file is missing: {audio_path}")
+        row["quality_status"] = QualityStatus.APPROVED.value
+    elif decision in {"needs_fix", "reject"}:
+        if not normalized_note:
+            raise ReviewError(f"a note is required for decision: {decision}")
+        if "reviewer_notes" not in fieldnames:
+            fieldnames.append("reviewer_notes")
+        row["quality_status"] = (
+            QualityStatus.NEEDS_REVIEW.value
+            if decision == "needs_fix"
+            else QualityStatus.REJECTED.value
+        )
+        row["reviewer_notes"] = _append_note(
+            row.get("reviewer_notes", ""),
+            [normalized_note],
+        )
+    else:
+        raise ReviewError(f"unknown review decision: {decision}")
+
+    _checkpoint(metadata_path, fieldnames, rows)
+    return ClipDecisionResult(
+        audio_id=audio_id,
+        new_status=row["quality_status"],
+        remaining_reviewable=_remaining(rows),
+    )
 
 
 def review_dataset(

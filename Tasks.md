@@ -573,6 +573,13 @@ outputs/model/bosesph-kapampangan-v1/
 
 ## 7.1 Build backend API
 
+**Status: Complete (June 25, 2026).** The `bosesph.api` package exposes a
+FastAPI application factory and `bosesph-api` server command. It wraps
+ingestion, validation, normalization, review, dataset building, transcription,
+evaluation, fine-tuning, comparison, project status, uploads, and output
+downloads. Workspace-relative paths are enforced and service errors are mapped
+to structured HTTP responses.
+
 Recommended endpoints:
 
 ```text
@@ -590,6 +597,12 @@ GET  /download-output
 **Done when:** Frontend or notebooks can call the backend.
 
 ## 7.2 Add background jobs for heavy tasks
+
+**Status: Complete (June 25, 2026).** `JobManager` uses an in-process,
+thread-safe `ThreadPoolExecutor` registry for dataset builds, transcription,
+evaluation, training, and comparison reports. Clients receive `202 Accepted`,
+then poll `GET /jobs` or `GET /jobs/{job_id}` for progress, results, or errors.
+The worker pool shuts down through the FastAPI lifespan hook.
 
 Heavy tasks:
 

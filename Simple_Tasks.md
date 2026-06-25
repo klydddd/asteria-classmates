@@ -39,8 +39,8 @@
 - [x] Export model package
 
 ## Phase 7: API Layer
-- [ ] Build backend API endpoints
-- [ ] Add background jobs for heavy tasks
+- [x] Build backend API endpoints
+- [x] Add background jobs for heavy tasks
 
 ## Phase 8: Demo UI / Visualization
 - [ ] Create dashboard pages

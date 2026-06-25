@@ -11,7 +11,7 @@ BosesPH Toolkit (`bosesph`) is a CLI-first pipeline for turning raw Philippine-l
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[api,dev]"
 ```
 
 ## Commands
@@ -22,9 +22,11 @@ black --check .           # format check
 pytest                    # run all tests
 pytest tests/test_pld.py  # run a single test file
 pytest -k test_name       # run a single test by name
+bosesph-api               # run FastAPI on BOSESPH_HOST:BOSESPH_PORT
 ```
 
 CLI entry point: `bosesph` (defined in `src/bosesph/cli.py:entrypoint`).
+API entry point: `bosesph-api` (defined in `src/bosesph/api/server.py:run`).
 
 ## Architecture
 
@@ -40,8 +42,9 @@ All pipeline logic lives in `src/bosesph/`. The CLI (`cli.py`) is a thin argpars
 - **`asr.py`** — Lazy-loaded ASR inference and WER/CER evaluation via HuggingFace `transformers` + `jiwer`. Reuses `audio.py` for stdlib WAV loading (no ffmpeg). Optional `[asr]` extras.
 - **`benchmark.py`** — Benchmark orchestration and report generation: baseline runs, comparison reports.
 - **`finetune.py`** — Whisper fine-tuning via `Seq2SeqTrainer` with a custom `torch.utils.data.Dataset` and speech collator. Reuses `asr._load_audio_array` for stdlib audio. Optional `[train]` extras (extends `[asr]`).
+- **`api/` package** — FastAPI backend with an in-process job manager. Wraps service functions as HTTP endpoints. Optional `[api]` extras.
 
-Data flows linearly: `pld.py` → `ingestion.py` → `transcripts.py` → `review.py` → `dataset.py` → `asr.py`/`benchmark.py` → `finetune.py`.
+Data flows linearly: `pld.py` → `ingestion.py` → `transcripts.py` → `review.py` → `dataset.py` → `asr.py`/`benchmark.py` → `finetune.py`, with `api/` exposing those services over HTTP.
 
 ## Key Conventions
 

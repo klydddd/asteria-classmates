@@ -15,7 +15,6 @@ from bosesph.dataset import (
     _format_duration,
     build_dataset,
 )
-from bosesph.metadata import DatasetSplit, QualityStatus
 from tests.audio_fixtures import write_pcm_wav
 
 FIELDNAMES = [
@@ -82,9 +81,7 @@ def _write_reviewed_dataset(
             },
         ]
 
-    with (dataset / "metadata.csv").open(
-        "w", encoding="utf-8", newline=""
-    ) as handle:
+    with (dataset / "metadata.csv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=FIELDNAMES)
         writer.writeheader()
         writer.writerows(rows)
@@ -123,9 +120,7 @@ class TestAssignSplits:
             {"speaker_id": "spk_001", "split": "unassigned"},
             {"speaker_id": "spk_001", "split": "unassigned"},
         ]
-        _assign_splits(
-            rows, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, seed=42
-        )
+        _assign_splits(rows, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, seed=42)
         # Single speaker → all go to train (largest bucket).
         assert all(row["split"] == "train" for row in rows)
 
@@ -138,9 +133,7 @@ class TestAssignSplits:
             {"speaker_id": "spk_002", "split": "unassigned"},
             {"speaker_id": "spk_002", "split": "unassigned"},
         ]
-        _assign_splits(
-            rows, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, seed=42
-        )
+        _assign_splits(rows, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, seed=42)
         spk1_splits = {row["split"] for row in rows if row["speaker_id"] == "spk_001"}
         spk2_splits = {row["split"] for row in rows if row["speaker_id"] == "spk_002"}
         assert len(spk1_splits) == 1
@@ -151,18 +144,12 @@ class TestAssignSplits:
         rows = []
         for i in range(1, 4):
             for _ in range(4):
-                rows.append(
-                    {"speaker_id": f"spk_{i:03d}", "split": "unassigned"}
-                )
-        _assign_splits(
-            rows, train_ratio=0.34, val_ratio=0.33, test_ratio=0.33, seed=42
-        )
+                rows.append({"speaker_id": f"spk_{i:03d}", "split": "unassigned"})
+        _assign_splits(rows, train_ratio=0.34, val_ratio=0.33, test_ratio=0.33, seed=42)
         # Each speaker should be in exactly one split.
         for i in range(1, 4):
             splits = {
-                row["split"]
-                for row in rows
-                if row["speaker_id"] == f"spk_{i:03d}"
+                row["split"] for row in rows if row["speaker_id"] == f"spk_{i:03d}"
             }
             assert len(splits) == 1
 
@@ -175,12 +162,8 @@ class TestAssignSplits:
 
         rows1 = make_rows()
         rows2 = make_rows()
-        _assign_splits(
-            rows1, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, seed=42
-        )
-        _assign_splits(
-            rows2, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, seed=42
-        )
+        _assign_splits(rows1, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, seed=42)
+        _assign_splits(rows2, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, seed=42)
         assert [row["split"] for row in rows1] == [row["split"] for row in rows2]
 
 
@@ -307,9 +290,7 @@ class TestBuildDataset:
 
         build_dataset(dataset, output)
 
-        stats = json.loads(
-            (output / "dataset_stats.json").read_text(encoding="utf-8")
-        )
+        stats = json.loads((output / "dataset_stats.json").read_text(encoding="utf-8"))
         assert stats["total_clips"] == 3
         assert stats["total_speakers"] == 2
         assert stats["total_duration_seconds"] == 21.5
@@ -364,7 +345,9 @@ class TestBuildDataset:
         _write_reviewed_dataset(dataset)
 
         with pytest.raises(DatasetBuildError, match="split ratios must sum to 1.0"):
-            build_dataset(dataset, output, train_ratio=0.5, val_ratio=0.1, test_ratio=0.1)
+            build_dataset(
+                dataset, output, train_ratio=0.5, val_ratio=0.1, test_ratio=0.1
+            )
 
     def test_overwrite_flag(self, tmp_path: Path) -> None:
         dataset = tmp_path / "reviewed"
@@ -415,9 +398,7 @@ class TestBuildDataset:
 
         build_dataset(dataset, output)
 
-        stats = json.loads(
-            (output / "dataset_stats.json").read_text(encoding="utf-8")
-        )
+        stats = json.loads((output / "dataset_stats.json").read_text(encoding="utf-8"))
         assert stats["source_counts"]["approved"] == 1
         assert stats["source_counts"]["rejected"] == 1
 
@@ -426,16 +407,12 @@ class TestBuildDataset:
 
 
 class TestBuildDatasetCLI:
-    def test_build_dataset_cli_success(
-        self, tmp_path: Path, capsys: object
-    ) -> None:
+    def test_build_dataset_cli_success(self, tmp_path: Path, capsys: object) -> None:
         dataset = tmp_path / "reviewed"
         output = tmp_path / "final"
         _write_reviewed_dataset(dataset)
 
-        exit_code = main(
-            ["build-dataset", str(dataset), "--output", str(output)]
-        )
+        exit_code = main(["build-dataset", str(dataset), "--output", str(output)])
         captured = capsys.readouterr()  # type: ignore[attr-defined]
 
         assert exit_code == 0
@@ -458,18 +435,14 @@ class TestBuildDatasetCLI:
         assert exit_code == 2
         assert "Input error:" in capsys.readouterr().err  # type: ignore[attr-defined]
 
-    def test_build_dataset_cli_overwrite(
-        self, tmp_path: Path, capsys: object
-    ) -> None:
+    def test_build_dataset_cli_overwrite(self, tmp_path: Path, capsys: object) -> None:
         dataset = tmp_path / "reviewed"
         output = tmp_path / "final"
         _write_reviewed_dataset(dataset)
 
         main(["build-dataset", str(dataset), "--output", str(output)])
 
-        refused = main(
-            ["build-dataset", str(dataset), "--output", str(output)]
-        )
+        refused = main(["build-dataset", str(dataset), "--output", str(output)])
         assert refused == 2
 
         overwritten = main(

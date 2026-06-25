@@ -24,6 +24,13 @@ train = [
   "bosesph-toolkit[asr]",
   "accelerate>=0.26",
 ]
+api = [
+  "fastapi>=0.110,<1",
+  "httpx2>=2,<3",
+  "pydantic-settings>=2.2,<3",
+  "uvicorn[standard]>=0.29",
+  "python-multipart>=0.0.9",
+]
 dev = [
   "black>=24.4,<26",
   "pytest>=8.2,<9",
@@ -32,6 +39,7 @@ dev = [
 
 [project.scripts]
 bosesph = "bosesph.cli:entrypoint"
+bosesph-api = "bosesph.api.server:run"
 
 [tool.setuptools.packages.find]
 where = ["src"]

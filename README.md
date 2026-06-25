@@ -57,13 +57,12 @@ In practice, the pipeline will:
 10. Package the dataset, benchmark results, model artifacts, dataset card, and
     model card so another developer can reproduce or extend the work.
 
-The command line remains the primary interface. A notebook or lightweight demo
-may demonstrate the workflow, while FastAPI and Next.js are stretch interfaces
-that must reuse the same Python pipeline rather than duplicate its logic.
+The command line remains the primary interface. The FastAPI backend reuses the
+same Python services for notebooks and the planned dashboard.
 
 ## Current Status
 
-Phases 1 through 3 are implemented for the selected PLD Kapampangan session
+Phases 1 through 7 are implemented for the selected PLD Kapampangan session
 workflow:
 
 - Metadata schema and transcription guidance are documented.
@@ -78,11 +77,13 @@ workflow:
 - Transcripts are normalized conservatively with a JSON before/after audit.
 - Pending and needs-review clips can be approved, marked for fixes, rejected,
   skipped, or reviewed later through a resumable terminal workflow.
+- Approved clips can be packaged into speaker-aware dataset splits.
+- Baseline ASR, WER/CER evaluation, benchmark reports, fine-tuning, and model
+  comparison are available through the CLI.
+- The FastAPI backend exposes the pipeline and runs heavy operations as
+  in-process background jobs.
 
-The following stages remain planned: generic transcript import, final dataset
-construction, speaker-aware splitting, dataset statistics, baseline ASR
-inference, WER/CER evaluation, fine-tuning, release packaging, and optional API
-or demo interfaces.
+The demo dashboard and open-source release packaging remain planned.
 
 ## Current CLI Usage
 
@@ -91,8 +92,19 @@ Python 3.10 or newer is required.
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[api,dev]"
 ```
+
+Run the API:
+
+```bash
+bosesph-api
+```
+
+The default workspace is `outputs/`, the default address is
+`http://0.0.0.0:8000`, and OpenAPI documentation is available at `/docs`.
+Override settings with `BOSESPH_WORKSPACE`, `BOSESPH_HOST`, `BOSESPH_PORT`, and
+`BOSESPH_MAX_WORKERS`.
 
 Validate metadata or regenerate the checked-in JSON schema:
 

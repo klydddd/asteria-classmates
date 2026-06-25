@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from bosesph.review import ReviewError, review_dataset
+from bosesph.review import ReviewError, decide_clip, review_dataset
 
 
 def metadata_row(**overrides: str) -> dict[str, str]:
@@ -253,3 +253,54 @@ def test_review_checkpoint_failure_keeps_metadata_unchanged(
         review_dataset(dataset, input_fn=input_fn, output_fn=lambda _: None)
 
     assert (dataset / "metadata.csv").read_bytes() == original
+
+
+def test_decide_clip_approves_one_pending_clip(tmp_path: Path) -> None:
+    dataset = tmp_path / "dataset"
+    write_dataset(
+        dataset,
+        [
+            metadata_row(),
+            metadata_row(
+                audio_id="pam_000002",
+                file_path="audio_clean/pam_000002.wav",
+            ),
+        ],
+    )
+
+    result = decide_clip(dataset, "pam_000001", "approve")
+
+    assert result.audio_id == "pam_000001"
+    assert result.new_status == "approved"
+    assert result.remaining_reviewable == 1
+    assert read_rows(dataset)[0]["quality_status"] == "approved"
+
+
+@pytest.mark.parametrize("decision", ["needs_fix", "reject"])
+def test_decide_clip_requires_note(
+    tmp_path: Path,
+    decision: str,
+) -> None:
+    dataset = tmp_path / "dataset"
+    write_dataset(dataset, [metadata_row()])
+
+    with pytest.raises(ReviewError, match="note is required"):
+        decide_clip(dataset, "pam_000001", decision)
+
+
+def test_decide_clip_rejects_unknown_or_decided_clip(tmp_path: Path) -> None:
+    dataset = tmp_path / "dataset"
+    write_dataset(dataset, [metadata_row(quality_status="approved")])
+
+    with pytest.raises(ReviewError, match="not found"):
+        decide_clip(dataset, "pam_999999", "approve")
+    with pytest.raises(ReviewError, match="already decided"):
+        decide_clip(dataset, "pam_000001", "approve")
+
+
+def test_decide_clip_does_not_approve_missing_audio(tmp_path: Path) -> None:
+    dataset = tmp_path / "dataset"
+    write_dataset(dataset, [metadata_row()], create_audio=False)
+
+    with pytest.raises(ReviewError, match="audio file is missing"):
+        decide_clip(dataset, "pam_000001", "approve")
