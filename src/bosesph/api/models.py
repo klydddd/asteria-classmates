@@ -133,15 +133,23 @@ class ReviewDecisionResult(BaseModel):
     remaining_reviewable: int
 
 
+class MetricSummary(BaseModel):
+    """WER/CER values displayed by the dashboard."""
+
+    wer: float
+    cer: float
+
+
 class ProjectStatus(BaseModel):
     """Aggregated project state for ``GET /project-status``."""
 
     dataset_available: bool = False
     dataset_stats: dict[str, Any] | None = None
-    benchmark_available: bool = False
-    benchmark_results: dict[str, Any] | None = None
+    baseline_metrics: MetricSummary | None = None
+    finetuned_metrics: MetricSummary | None = None
     model_available: bool = False
     model_dir: str | None = None
+    model_version: str | None = None
 
 
 class UploadResult(BaseModel):

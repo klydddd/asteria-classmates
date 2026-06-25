@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import time
 import zipfile
 from pathlib import Path
@@ -198,6 +199,85 @@ def test_build_job_status_and_download(
     with zipfile.ZipFile(io.BytesIO(download.content)) as archive:
         assert "metadata.csv" in archive.namelist()
         assert "dataset_stats.json" in archive.namelist()
+
+
+def test_project_status_returns_dashboard_metrics(
+    client: tuple[TestClient, Path],
+) -> None:
+    test_client, workspace = client
+    dataset = workspace / "dataset"
+    baseline = workspace / "benchmark" / "baseline"
+    finetuned = workspace / "benchmark" / "finetuned"
+    incomplete_model = workspace / "model" / "a-incomplete"
+    model = workspace / "model" / "bosesph-kapampangan-v1"
+    later_model = workspace / "model" / "z-later"
+    dataset.mkdir(parents=True)
+    baseline.mkdir(parents=True)
+    finetuned.mkdir(parents=True)
+    incomplete_model.mkdir(parents=True)
+    model.mkdir(parents=True)
+    later_model.mkdir(parents=True)
+
+    (dataset / "dataset_stats.json").write_text(
+        json.dumps(
+            {
+                "total_clips": 68,
+                "total_duration_seconds": 612.0,
+                "total_duration_display": "10m 12s",
+                "total_speakers": 4,
+                "source_counts": {"approved": 68},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (baseline / "results.json").write_text(
+        json.dumps({"wer": 0.91, "cer": 0.52}),
+        encoding="utf-8",
+    )
+    (finetuned / "results.json").write_text(
+        json.dumps({"wer": 0.75, "cer": 0.34}),
+        encoding="utf-8",
+    )
+    (model / "model_card.md").write_text("# Model", encoding="utf-8")
+    (later_model / "model_card.md").write_text("# Later model", encoding="utf-8")
+
+    response = test_client.get("/project-status")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "dataset_available": True,
+        "dataset_stats": {
+            "total_clips": 68,
+            "total_duration_seconds": 612.0,
+            "total_duration_display": "10m 12s",
+            "total_speakers": 4,
+            "source_counts": {"approved": 68},
+        },
+        "baseline_metrics": {"wer": 0.91, "cer": 0.52},
+        "finetuned_metrics": {"wer": 0.75, "cer": 0.34},
+        "model_available": True,
+        "model_dir": "model/bosesph-kapampangan-v1",
+        "model_version": "bosesph-kapampangan-v1",
+    }
+
+
+def test_project_status_uses_none_for_missing_outputs(
+    client: tuple[TestClient, Path],
+) -> None:
+    test_client, _ = client
+
+    response = test_client.get("/project-status")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "dataset_available": False,
+        "dataset_stats": None,
+        "baseline_metrics": None,
+        "finetuned_metrics": None,
+        "model_available": False,
+        "model_dir": None,
+        "model_version": None,
+    }
 
 
 def test_transcribe_job_uses_lazy_asr_services(
