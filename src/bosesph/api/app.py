@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from bosesph.api.jobs import JobManager
-from bosesph.api.routes import files, jobs, pipeline
+from bosesph.api.routes import demo, files, jobs, pipeline
 from bosesph.api.settings import ApiSettings, PathTraversalError
 from bosesph.asr import ASRError
 from bosesph.dataset import DatasetBuildError
@@ -77,4 +77,5 @@ def create_app() -> FastAPI:
     app.include_router(pipeline.router)
     app.include_router(jobs.router)
     app.include_router(files.router)
+    app.include_router(demo.router)
     return app

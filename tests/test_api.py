@@ -11,6 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
+from bosesph.api import demo as demo_api
 from bosesph.api.app import create_app
 from bosesph.asr import TranscriptionResult
 from tests.audio_fixtures import write_pcm_wav
@@ -352,6 +353,174 @@ def test_project_status_rejects_invalid_metric_artifacts(
     assert response.status_code == 200
     assert response.json()["baseline_metrics"] is None
     assert response.json()["finetuned_metrics"] == {"wer": 0.75, "cer": 0.34}
+
+
+def test_demo_options_return_controlled_choices(
+    client: tuple[TestClient, Path],
+) -> None:
+    test_client, workspace = client
+    model_dir = workspace / "model" / "bosesph-kapampangan-v1"
+    saved_model = model_dir / "model"
+    saved_model.mkdir(parents=True)
+    (saved_model / "config.json").write_text("{}", encoding="utf-8")
+    (model_dir / "model_card.md").write_text("# Model", encoding="utf-8")
+    (model_dir / "training_config.json").write_text(
+        json.dumps({"language": "ceb"}),
+        encoding="utf-8",
+    )
+
+    response = test_client.get("/demo/options")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "languages": [
+            {
+                "id": "kapampangan",
+                "label": "Kapampangan",
+                "description": "Kapampangan speech with model-specific decoding.",
+            },
+            {
+                "id": "auto",
+                "label": "Auto-detect",
+                "description": ("Let the selected model determine decoding language."),
+            },
+        ],
+        "models": [
+            {
+                "id": "baseline",
+                "label": "Whisper Small (baseline)",
+                "model_path": "openai/whisper-small",
+                "available": True,
+                "unavailable_reason": None,
+                "decoding_language": None,
+            },
+            {
+                "id": "finetuned",
+                "label": "BosesPH fine-tuned model",
+                "model_path": "model/bosesph-kapampangan-v1/model",
+                "available": True,
+                "unavailable_reason": None,
+                "decoding_language": "ceb",
+            },
+        ],
+        "default_language_id": "kapampangan",
+        "default_model_id": "baseline",
+    }
+
+
+def test_demo_options_disable_missing_finetuned_model(
+    client: tuple[TestClient, Path],
+) -> None:
+    test_client, _ = client
+
+    response = test_client.get("/demo/options")
+
+    assert response.status_code == 200
+    assert response.json()["models"][1] == {
+        "id": "finetuned",
+        "label": "BosesPH fine-tuned model",
+        "model_path": "",
+        "available": False,
+        "unavailable_reason": "No local fine-tuned model found.",
+        "decoding_language": None,
+    }
+
+
+def test_demo_options_use_first_sorted_complete_model(
+    client: tuple[TestClient, Path],
+) -> None:
+    test_client, workspace = client
+    model_root = workspace / "model"
+    incomplete = model_root / "a-incomplete"
+    selected = model_root / "b-selected"
+    later = model_root / "z-later"
+
+    (incomplete / "model").mkdir(parents=True)
+    (incomplete / "model" / "config.json").write_text("{}", encoding="utf-8")
+    for candidate in (selected, later):
+        (candidate / "model").mkdir(parents=True)
+        (candidate / "model_card.md").write_text("# Model", encoding="utf-8")
+        (candidate / "model" / "config.json").write_text("{}", encoding="utf-8")
+
+    response = test_client.get("/demo/options")
+
+    assert response.status_code == 200
+    assert response.json()["models"][1]["model_path"] == "model/b-selected/model"
+
+
+@pytest.mark.parametrize(
+    "training_config",
+    [None, "{invalid", "[]", json.dumps({"language": 7})],
+)
+def test_demo_options_default_malformed_training_language_to_tl(
+    client: tuple[TestClient, Path],
+    training_config: str | None,
+) -> None:
+    test_client, workspace = client
+    model_dir = workspace / "model" / "local"
+    (model_dir / "model").mkdir(parents=True)
+    (model_dir / "model_card.md").write_text("# Model", encoding="utf-8")
+    (model_dir / "model" / "config.json").write_text("{}", encoding="utf-8")
+    if training_config is not None:
+        (model_dir / "training_config.json").write_text(
+            training_config,
+            encoding="utf-8",
+        )
+
+    response = test_client.get("/demo/options")
+
+    assert response.status_code == 200
+    assert response.json()["models"][1]["decoding_language"] == "tl"
+
+
+def test_select_demo_model_applies_model_specific_decoding(tmp_path: Path) -> None:
+    model_dir = tmp_path / "model" / "local"
+    (model_dir / "model").mkdir(parents=True)
+    (model_dir / "model_card.md").write_text("# Model", encoding="utf-8")
+    (model_dir / "model" / "config.json").write_text("{}", encoding="utf-8")
+    (model_dir / "training_config.json").write_text(
+        json.dumps({"language": "ceb"}),
+        encoding="utf-8",
+    )
+    options = demo_api.discover_demo_options(tmp_path)
+
+    baseline, baseline_language = demo_api.select_demo_model(
+        options,
+        "baseline",
+        "kapampangan",
+    )
+    finetuned, finetuned_language = demo_api.select_demo_model(
+        options,
+        "finetuned",
+        "kapampangan",
+    )
+    _, auto_language = demo_api.select_demo_model(options, "finetuned", "auto")
+
+    assert baseline.id == "baseline"
+    assert baseline_language is None
+    assert finetuned.id == "finetuned"
+    assert finetuned_language == "ceb"
+    assert auto_language is None
+
+
+@pytest.mark.parametrize(
+    ("model_id", "language_id", "message"),
+    [
+        ("unknown", "kapampangan", "Unknown demo model: unknown"),
+        ("finetuned", "kapampangan", "No local fine-tuned model found."),
+        ("baseline", "unknown", "Unknown demo language: unknown"),
+    ],
+)
+def test_select_demo_model_rejects_invalid_choices(
+    tmp_path: Path,
+    model_id: str,
+    language_id: str,
+    message: str,
+) -> None:
+    options = demo_api.discover_demo_options(tmp_path)
+
+    with pytest.raises(ValueError, match=message):
+        demo_api.select_demo_model(options, model_id, language_id)
 
 
 def test_transcribe_job_uses_lazy_asr_services(

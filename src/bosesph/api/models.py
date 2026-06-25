@@ -152,6 +152,34 @@ class ProjectStatus(BaseModel):
     model_version: str | None = None
 
 
+class DemoLanguageOption(BaseModel):
+    """Controlled language choice for direct demo transcription."""
+
+    id: str
+    label: str
+    description: str
+
+
+class DemoModelOption(BaseModel):
+    """Controlled model choice for direct demo transcription."""
+
+    id: str
+    label: str
+    model_path: str
+    available: bool
+    unavailable_reason: str | None = None
+    decoding_language: str | None = None
+
+
+class DemoOptions(BaseModel):
+    """Available choices and defaults for the direct transcription demo."""
+
+    languages: list[DemoLanguageOption]
+    models: list[DemoModelOption]
+    default_language_id: str
+    default_model_id: str
+
+
 class UploadResult(BaseModel):
     """Response for ``POST /upload-audio``."""
 
