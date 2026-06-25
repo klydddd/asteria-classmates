@@ -14,6 +14,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+asr = [
+  "transformers>=4.40,<5",
+  "torch>=2.2",
+  "numpy>=1.24",
+  "jiwer>=3.0,<4",
+]
 dev = [
   "black>=24.4,<26",
   "pytest>=8.2,<9",

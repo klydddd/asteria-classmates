@@ -27,9 +27,9 @@
 - [x] Generate dataset statistics
 
 ## Phase 5: Baseline ASR and Benchmark
-- [ ] Run baseline ASR model
-- [ ] Calculate WER and CER metrics
-- [ ] Create benchmark report
+- [x] Run baseline ASR model
+- [x] Calculate WER and CER metrics
+- [x] Create benchmark report
 
 ## Phase 6: Fine-Tuning ASR Model
 - [ ] Prepare training data

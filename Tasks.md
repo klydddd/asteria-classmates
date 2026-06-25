@@ -397,6 +397,15 @@ Show:
 
 ## 5.1 Run baseline ASR model
 
+**Status: Complete (June 25, 2026).** `bosesph transcribe` loads a HuggingFace
+Whisper pipeline (default `openai/whisper-small`) with lazy-imported optional
+`[asr]` dependencies. Audio is loaded via the existing stdlib `audio.py`
+reader (no ffmpeg/torchaudio). Single-file mode prints the transcript;
+dataset mode iterates a split CSV and writes `baseline_predictions.csv`
+with columns `audio_id, reference, prediction, file_path`. The `--language`
+flag defaults to auto-detect since Whisper does not support Kapampangan
+natively; high baseline WER is the expected motivating result for Phase 6.
+
 Use a pretrained ASR model such as Whisper or another multilingual ASR model.
 
 Input:
@@ -414,6 +423,13 @@ outputs/benchmark/baseline_predictions.csv
 **Done when:** The system generates predicted transcripts for the test set.
 
 ## 5.2 Calculate WER and CER
+
+**Status: Complete (June 25, 2026).** `bosesph evaluate` reads a predictions
+CSV (which already contains the `reference` column), normalises text for
+scoring (lowercase, strip annotations/punctuation, collapse whitespace),
+and computes WER/CER via `jiwer`. An optional `--references` flag can
+override references from a separate CSV. Results are printed and optionally
+written to `results.json`.
 
 Metrics:
 
@@ -434,6 +450,12 @@ Output:
 **Done when:** The system outputs WER and CER for the baseline model.
 
 ## 5.3 Create benchmark report
+
+**Status: Complete (June 25, 2026).** When `--output` is supplied to
+`bosesph evaluate`, the command writes `results.json` and `report.md`.
+The report includes model name, dataset info, WER/CER scores, top-10
+highest-error examples sorted by per-clip WER, and a limitations note
+explaining that Kapampangan is unsupported by the base Whisper model.
 
 Report should include:
 
