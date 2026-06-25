@@ -245,6 +245,130 @@ def build_parser() -> ArgumentParser:
     compare_parser.add_argument(
         "--output", type=Path, required=True, help="output report path (.md)"
     )
+
+    export_colab_parser = commands.add_parser(
+        "export-colab",
+        help="generate a Google Colab notebook to fine-tune on Colab's GPU",
+    )
+    export_colab_parser.add_argument(
+        "dataset", type=Path, help="built dataset directory (used to derive names)"
+    )
+    export_colab_parser.add_argument(
+        "--output", type=Path, required=True, help="path to write the .ipynb"
+    )
+    export_colab_parser.add_argument(
+        "--repo-url",
+        default=None,
+        dest="repo_url",
+        help="git URL to pip-install bosesph from (default: origin remote)",
+    )
+    export_colab_parser.add_argument(
+        "--repo-ref",
+        default="main",
+        dest="repo_ref",
+        help="git branch/tag/commit to install (default: main)",
+    )
+    export_colab_parser.add_argument(
+        "--drive-base",
+        default="/content/drive/MyDrive/bosesph",
+        dest="drive_base",
+        help="Google Drive base path for dataset and output",
+    )
+    # Training hyperparameters (mirror the 'finetune' command).
+    export_colab_parser.add_argument(
+        "--base-model",
+        default="openai/whisper-tiny",
+        dest="base_model",
+        help="HuggingFace model ID to fine-tune",
+    )
+    export_colab_parser.add_argument(
+        "--language",
+        default="tl",
+        help="language token for label tokenization (default: tl for Tagalog proxy)",
+    )
+    export_colab_parser.add_argument(
+        "--epochs", type=int, default=3, help="number of training epochs"
+    )
+    export_colab_parser.add_argument(
+        "--max-steps",
+        type=int,
+        default=None,
+        dest="max_steps",
+        help="override epochs with a fixed step count",
+    )
+    export_colab_parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=8,
+        dest="batch_size",
+        help="per-device training batch size",
+    )
+    export_colab_parser.add_argument(
+        "--learning-rate",
+        type=float,
+        default=1e-5,
+        dest="learning_rate",
+        help="learning rate",
+    )
+    export_colab_parser.add_argument(
+        "--train-split",
+        default="train",
+        dest="train_split",
+        help="split CSV to train on",
+    )
+    export_colab_parser.add_argument(
+        "--eval-split",
+        default="validation",
+        dest="eval_split",
+        help="split CSV for evaluation during training",
+    )
+    export_colab_parser.add_argument(
+        "--gradient-checkpointing",
+        action="store_true",
+        default=False,
+        dest="gradient_checkpointing",
+        help="trade compute for memory by recomputing activations during backward pass",
+    )
+    export_colab_parser.add_argument(
+        "--optim",
+        default="adamw_torch",
+        help="optimizer (use 'adafactor' to reduce memory)",
+    )
+    export_colab_parser.add_argument(
+        "--no-fp16",
+        action="store_false",
+        dest="fp16",
+        default=True,
+        help="disable mixed-precision training (fp16 is on by default for GPU)",
+    )
+    export_colab_parser.add_argument(
+        "--full",
+        action="store_false",
+        dest="use_lora",
+        default=True,
+        help="use full fine-tuning instead of LoRA (default: LoRA)",
+    )
+    export_colab_parser.add_argument(
+        "--lora-r",
+        type=int,
+        default=16,
+        dest="lora_r",
+        help="LoRA rank (default: 16)",
+    )
+    export_colab_parser.add_argument(
+        "--lora-alpha",
+        type=int,
+        default=32,
+        dest="lora_alpha",
+        help="LoRA alpha scaling factor (default: 32)",
+    )
+    export_colab_parser.add_argument(
+        "--lora-dropout",
+        type=float,
+        default=0.05,
+        dest="lora_dropout",
+        help="LoRA dropout rate (default: 0.05)",
+    )
     return parser
 
 
@@ -560,6 +684,92 @@ def _run_finetune(
     return 0
 
 
+def _resolve_repo_url(repo_url: str | None) -> str:
+    """Return the explicit repo URL, the origin remote, or the known default."""
+    from bosesph.colab import DEFAULT_REPO_URL
+
+    if repo_url:
+        return repo_url
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        url = result.stdout.strip()
+        if url:
+            return url
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return DEFAULT_REPO_URL
+
+
+def _run_export_colab(
+    dataset: Path,
+    *,
+    output: Path,
+    repo_url: str | None,
+    repo_ref: str,
+    drive_base: str,
+    base_model: str,
+    language: str,
+    epochs: int,
+    max_steps: int | None,
+    batch_size: int,
+    learning_rate: float,
+    train_split: str,
+    eval_split: str,
+    gradient_checkpointing: bool,
+    optim: str,
+    fp16: bool,
+    use_lora: bool,
+    lora_r: int,
+    lora_alpha: int,
+    lora_dropout: float,
+) -> int:
+    from bosesph.colab import ColabExportConfig, write_notebook
+
+    if not dataset.is_dir():
+        _print_input_error(f"dataset directory not found: {dataset}", "text")
+        return 2
+
+    dataset_name = dataset.resolve().name
+    base = drive_base.rstrip("/")
+    config = ColabExportConfig(
+        base_model=base_model,
+        language=language,
+        epochs=epochs,
+        max_steps=max_steps,
+        batch_size=batch_size,
+        learning_rate=learning_rate,
+        train_split=train_split,
+        eval_split=eval_split,
+        gradient_checkpointing=gradient_checkpointing,
+        optim=optim,
+        use_lora=use_lora,
+        lora_r=lora_r,
+        lora_alpha=lora_alpha,
+        lora_dropout=lora_dropout,
+        repo_url=_resolve_repo_url(repo_url),
+        repo_ref=repo_ref,
+        drive_dataset_path=f"{base}/{dataset_name}",
+        drive_output_path=f"{base}/{dataset_name}-finetuned",
+        fp16=fp16,
+    )
+    write_notebook(config, output)
+
+    print(f"Colab notebook written to: {output}")
+    print("Next steps:")
+    print(f"  1. Upload your dataset folder to Drive: {config.drive_dataset_path}")
+    print("  2. Open the notebook in Google Colab and set the runtime to GPU.")
+    print("  3. Run all cells.")
+    print(f"  Trained model will be saved to: {config.drive_output_path}")
+    return 0
+
+
 def _run_compare(
     baseline: Path,
     finetuned: Path,
@@ -655,6 +865,29 @@ def main(argv: Sequence[str] | None = None) -> int:
             eval_split=args.eval_split,
             gradient_checkpointing=args.gradient_checkpointing,
             optim=args.optim,
+            use_lora=args.use_lora,
+            lora_r=args.lora_r,
+            lora_alpha=args.lora_alpha,
+            lora_dropout=args.lora_dropout,
+        )
+    if args.command == "export-colab":
+        return _run_export_colab(
+            args.dataset,
+            output=args.output,
+            repo_url=args.repo_url,
+            repo_ref=args.repo_ref,
+            drive_base=args.drive_base,
+            base_model=args.base_model,
+            language=args.language,
+            epochs=args.epochs,
+            max_steps=args.max_steps,
+            batch_size=args.batch_size,
+            learning_rate=args.learning_rate,
+            train_split=args.train_split,
+            eval_split=args.eval_split,
+            gradient_checkpointing=args.gradient_checkpointing,
+            optim=args.optim,
+            fp16=args.fp16,
             use_lora=args.use_lora,
             lora_r=args.lora_r,
             lora_alpha=args.lora_alpha,

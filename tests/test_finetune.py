@@ -503,6 +503,16 @@ class TestComparisonReport:
 # -----------------------------------------------------------------------
 
 
+class TestFp16Parameter:
+    def test_finetune_model_accepts_fp16_defaulting_false(self) -> None:
+        import inspect
+
+        from bosesph.finetune import finetune_model
+
+        param = inspect.signature(finetune_model).parameters["fp16"]
+        assert param.default is False
+
+
 class TestFinetuneCLI:
     def test_missing_dataset_exits_2(self, tmp_path: Path) -> None:
         code = main(
