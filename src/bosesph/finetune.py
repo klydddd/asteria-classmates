@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import gc
 import textwrap
 from collections.abc import Callable
 from datetime import datetime, timezone
@@ -178,6 +179,39 @@ def _make_dataset_class() -> type:
             return _build_example(self.processor, audio_path, transcript)
 
     return WhisperDataset
+
+
+# ---------------------------------------------------------------------------
+# Memory cleanup callback
+# ---------------------------------------------------------------------------
+
+
+def _make_memory_cleanup_callback(transformers: Any, every_n_steps: int = 50) -> Any:
+    """Return a TrainerCallback that periodically releases the device cache.
+
+    On Apple Silicon (MPS) the caching allocator never returns freed memory to
+    the OS, so resident memory climbs as new tensor shapes are encountered.
+    Emptying the cache every ``every_n_steps`` steps caps that growth.
+    """
+    torch = _require_torch()
+
+    class MemoryCleanupCallback(transformers.TrainerCallback):  # type: ignore[name-defined,misc]
+        def on_step_end(
+            self,
+            args: Any,
+            state: Any,
+            control: Any,
+            **kwargs: Any,
+        ) -> None:
+            if every_n_steps <= 0 or state.global_step % every_n_steps != 0:
+                return
+            gc.collect()
+            if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                torch.mps.empty_cache()
+            elif torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+    return MemoryCleanupCallback()
 
 
 # ---------------------------------------------------------------------------
@@ -379,24 +413,23 @@ def finetune_model(
     model.generation_config.task = "transcribe"
     model.generation_config.forced_decoder_ids = None
 
-    if gradient_checkpointing:
-        model.config.use_cache = False
-        model.gradient_checkpointing_enable(
-            gradient_checkpointing_kwargs={"use_reentrant": False}
-        )
-
     # ------------------------------------------------------------------
     # Apply LoRA adapter (if enabled)
     # ------------------------------------------------------------------
     if use_lora:
         peft = _require_peft()
-        if gradient_checkpointing:
-            model.enable_input_require_grads()
+        # Target decoder-only: encoder needs no gradients for ASR fine-tuning.
+        decoder_target_modules = [
+            f"model.decoder.layers.{i}.{attn}.{proj}"
+            for i in range(model.config.decoder_layers)
+            for attn in ("self_attn", "encoder_attn")
+            for proj in ("q_proj", "v_proj")
+        ]
         lora_config = peft.LoraConfig(
             r=lora_r,
             lora_alpha=lora_alpha,
             lora_dropout=lora_dropout,
-            target_modules=["q_proj", "v_proj"],
+            target_modules=decoder_target_modules,
             bias="none",
         )
         model = peft.get_peft_model(model, lora_config)
@@ -404,6 +437,15 @@ def finetune_model(
         _log(
             f"LoRA enabled: {trainable:,} trainable / {total:,} total params "
             f"({100 * trainable / total:.1f}%)"
+        )
+
+    # Enable gradient checkpointing after LoRA wrapping so it applies to
+    # the final model object (PEFT wrap can otherwise reset this state).
+    if gradient_checkpointing:
+        model.config.use_cache = False
+        model.enable_input_require_grads()
+        model.gradient_checkpointing_enable(
+            gradient_checkpointing_kwargs={"use_reentrant": False}
         )
 
     # ------------------------------------------------------------------
@@ -459,6 +501,7 @@ def finetune_model(
         eval_dataset=eval_dataset,
         data_collator=collator,
         tokenizer=processor.feature_extractor,
+        callbacks=[_make_memory_cleanup_callback(transformers)],
     )
     train_result = trainer.train()
     steps = train_result.global_step
