@@ -448,6 +448,44 @@ def test_demo_options_use_first_sorted_complete_model(
     assert response.json()["models"][1]["model_path"] == "model/b-selected/model"
 
 
+def test_demo_options_ignore_candidate_symlink_outside_workspace(
+    client: tuple[TestClient, Path],
+    tmp_path: Path,
+) -> None:
+    test_client, workspace = client
+    outside = tmp_path / "outside-candidate"
+    (outside / "model").mkdir(parents=True)
+    (outside / "model_card.md").write_text("# Outside", encoding="utf-8")
+    (outside / "model" / "config.json").write_text("{}", encoding="utf-8")
+    model_root = workspace / "model"
+    model_root.mkdir(parents=True)
+    (model_root / "external").symlink_to(outside, target_is_directory=True)
+
+    response = test_client.get("/demo/options")
+
+    assert response.status_code == 200
+    assert response.json()["models"][1]["available"] is False
+
+
+def test_demo_options_ignore_nested_model_symlink_outside_workspace(
+    client: tuple[TestClient, Path],
+    tmp_path: Path,
+) -> None:
+    test_client, workspace = client
+    outside_model = tmp_path / "outside-model"
+    outside_model.mkdir()
+    (outside_model / "config.json").write_text("{}", encoding="utf-8")
+    candidate = workspace / "model" / "local"
+    candidate.mkdir(parents=True)
+    (candidate / "model_card.md").write_text("# Local", encoding="utf-8")
+    (candidate / "model").symlink_to(outside_model, target_is_directory=True)
+
+    response = test_client.get("/demo/options")
+
+    assert response.status_code == 200
+    assert response.json()["models"][1]["available"] is False
+
+
 @pytest.mark.parametrize(
     "training_config",
     [None, "{invalid", "[]", json.dumps({"language": 7})],
@@ -471,6 +509,43 @@ def test_demo_options_default_malformed_training_language_to_tl(
 
     assert response.status_code == 200
     assert response.json()["models"][1]["decoding_language"] == "tl"
+
+
+def test_demo_options_default_invalid_utf8_training_language_to_tl(
+    client: tuple[TestClient, Path],
+) -> None:
+    test_client, workspace = client
+    model_dir = workspace / "model" / "local"
+    (model_dir / "model").mkdir(parents=True)
+    (model_dir / "model_card.md").write_text("# Model", encoding="utf-8")
+    (model_dir / "model" / "config.json").write_text("{}", encoding="utf-8")
+    (model_dir / "training_config.json").write_bytes(
+        b'{"language":"' + bytes([0xFF]) + b'"}'
+    )
+
+    response = test_client.get("/demo/options")
+
+    assert response.status_code == 200
+    assert response.json()["models"][1]["decoding_language"] == "tl"
+
+
+def test_demo_options_strip_configured_training_language(
+    client: tuple[TestClient, Path],
+) -> None:
+    test_client, workspace = client
+    model_dir = workspace / "model" / "local"
+    (model_dir / "model").mkdir(parents=True)
+    (model_dir / "model_card.md").write_text("# Model", encoding="utf-8")
+    (model_dir / "model" / "config.json").write_text("{}", encoding="utf-8")
+    (model_dir / "training_config.json").write_text(
+        json.dumps({"language": " ceb "}),
+        encoding="utf-8",
+    )
+
+    response = test_client.get("/demo/options")
+
+    assert response.status_code == 200
+    assert response.json()["models"][1]["decoding_language"] == "ceb"
 
 
 def test_select_demo_model_applies_model_specific_decoding(tmp_path: Path) -> None:

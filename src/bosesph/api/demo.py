@@ -17,7 +17,7 @@ def _read_decoding_language(candidate: Path) -> str:
 
     try:
         config = json.loads(config_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return DEFAULT_DECODING_LANGUAGE
 
     if not isinstance(config, dict):
@@ -25,7 +25,11 @@ def _read_decoding_language(candidate: Path) -> str:
     language = config.get("language")
     if not isinstance(language, str) or not language.strip():
         return DEFAULT_DECODING_LANGUAGE
-    return language
+    return language.strip()
+
+
+def _is_within_workspace(path: Path, workspace: Path) -> bool:
+    return path.resolve().is_relative_to(workspace)
 
 
 def _find_finetuned_model(workspace: Path) -> Path | None:
@@ -38,6 +42,8 @@ def _find_finetuned_model(workspace: Path) -> Path | None:
             child
             for child in sorted(model_root.iterdir())
             if child.is_dir()
+            and _is_within_workspace(child, workspace)
+            and _is_within_workspace(child / "model", workspace)
             and (child / "model_card.md").is_file()
             and (child / "model" / "config.json").is_file()
         ),
