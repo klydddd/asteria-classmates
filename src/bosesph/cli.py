@@ -135,6 +135,76 @@ def build_parser() -> ArgumentParser:
     evaluate_parser.add_argument(
         "--language", default="kapampangan", help="language label for report"
     )
+
+    finetune_parser = commands.add_parser(
+        "finetune",
+        help="fine-tune a Whisper model on the built dataset",
+    )
+    finetune_parser.add_argument("dataset", type=Path, help="built dataset directory")
+    finetune_parser.add_argument(
+        "--output", type=Path, required=True, help="model output directory"
+    )
+    finetune_parser.add_argument(
+        "--base-model",
+        default="openai/whisper-tiny",
+        dest="base_model",
+        help="HuggingFace model ID to fine-tune",
+    )
+    finetune_parser.add_argument(
+        "--language",
+        default="tl",
+        help="language token for label tokenization (default: tl for Tagalog proxy)",
+    )
+    finetune_parser.add_argument(
+        "--epochs", type=int, default=3, help="number of training epochs"
+    )
+    finetune_parser.add_argument(
+        "--max-steps",
+        type=int,
+        default=None,
+        dest="max_steps",
+        help="override epochs with a fixed step count",
+    )
+    finetune_parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=8,
+        dest="batch_size",
+        help="per-device training batch size",
+    )
+    finetune_parser.add_argument(
+        "--learning-rate",
+        type=float,
+        default=1e-5,
+        dest="learning_rate",
+        help="learning rate",
+    )
+    finetune_parser.add_argument(
+        "--train-split",
+        default="train",
+        dest="train_split",
+        help="split CSV to train on",
+    )
+    finetune_parser.add_argument(
+        "--eval-split",
+        default="validation",
+        dest="eval_split",
+        help="split CSV for evaluation during training",
+    )
+
+    compare_parser = commands.add_parser(
+        "compare",
+        help="compare baseline vs fine-tuned benchmark results",
+    )
+    compare_parser.add_argument(
+        "--baseline", type=Path, required=True, help="baseline results.json"
+    )
+    compare_parser.add_argument(
+        "--finetuned", type=Path, required=True, help="fine-tuned results.json"
+    )
+    compare_parser.add_argument(
+        "--output", type=Path, required=True, help="output report path (.md)"
+    )
     return parser
 
 
@@ -386,6 +456,96 @@ def _run_evaluate(
     return 0
 
 
+def _run_finetune(
+    dataset: Path,
+    *,
+    output: Path,
+    base_model: str,
+    language: str,
+    epochs: int,
+    max_steps: int | None,
+    batch_size: int,
+    learning_rate: float,
+    train_split: str,
+    eval_split: str,
+) -> int:
+    from bosesph.finetune import finetune_model
+
+    try:
+        if not dataset.is_dir():
+            _print_input_error(f"dataset directory not found: {dataset}", "text")
+            return 2
+
+        def progress(message: str) -> None:
+            print(f"  {message}")
+
+        report = finetune_model(
+            dataset,
+            output,
+            base_model=base_model,
+            language=language,
+            epochs=epochs,
+            max_steps=max_steps,
+            batch_size=batch_size,
+            learning_rate=learning_rate,
+            train_split=train_split,
+            eval_split=eval_split,
+            progress_fn=progress,
+        )
+    except ASRError as error:
+        _print_input_error(str(error), "text")
+        return 2
+
+    print("Fine-tuning complete.")
+    print(f"Base model: {report.base_model}")
+    print(f"Language: {report.language}")
+    print(f"Training clips: {report.train_clips}")
+    print(f"Validation clips: {report.val_clips}")
+    print(f"Steps: {report.steps}")
+    print(f"Model saved to: {report.model_path}")
+    print(f"Config: {report.config_path}")
+    print(f"Model card: {report.card_path}")
+    return 0
+
+
+def _run_compare(
+    baseline: Path,
+    finetuned: Path,
+    output: Path,
+) -> int:
+    from bosesph.asr import BenchmarkMetrics
+    from bosesph.benchmark import generate_comparison_report
+
+    try:
+        if not baseline.is_file():
+            _print_input_error(f"baseline results not found: {baseline}", "text")
+            return 2
+        if not finetuned.is_file():
+            _print_input_error(f"fine-tuned results not found: {finetuned}", "text")
+            return 2
+
+        baseline_metrics = BenchmarkMetrics.model_validate_json(
+            baseline.read_text(encoding="utf-8")
+        )
+        finetuned_metrics = BenchmarkMetrics.model_validate_json(
+            finetuned.read_text(encoding="utf-8")
+        )
+        report_path = generate_comparison_report(
+            baseline_metrics, finetuned_metrics, output
+        )
+    except (OSError, ValueError) as error:
+        _print_input_error(str(error), "text")
+        return 2
+
+    print(f"Baseline WER: {baseline_metrics.wer:.4f}")
+    print(f"Fine-tuned WER: {finetuned_metrics.wer:.4f}")
+    delta = finetuned_metrics.wer - baseline_metrics.wer
+    sign = "+" if delta >= 0 else ""
+    print(f"Delta: {sign}{delta:.4f}")
+    print(f"Wrote comparison report to {report_path}")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return its documented process exit code."""
     try:
@@ -429,6 +589,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             model_name=args.model_name,
             language=args.language,
         )
+    if args.command == "finetune":
+        return _run_finetune(
+            args.dataset,
+            output=args.output,
+            base_model=args.base_model,
+            language=args.language,
+            epochs=args.epochs,
+            max_steps=args.max_steps,
+            batch_size=args.batch_size,
+            learning_rate=args.learning_rate,
+            train_split=args.train_split,
+            eval_split=args.eval_split,
+        )
+    if args.command == "compare":
+        return _run_compare(args.baseline, args.finetuned, args.output)
     return 2
 
 

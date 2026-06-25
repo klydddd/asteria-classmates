@@ -32,11 +32,11 @@
 - [x] Create benchmark report
 
 ## Phase 6: Fine-Tuning ASR Model
-- [ ] Prepare training data
-- [ ] Choose base ASR model (Whisper tiny/small)
-- [ ] Run fine-tuning script
-- [ ] Evaluate fine-tuned model (compare with baseline)
-- [ ] Export model package
+- [x] Prepare training data
+- [x] Choose base ASR model (Whisper tiny/small)
+- [x] Run fine-tuning script
+- [x] Evaluate fine-tuned model (compare with baseline)
+- [x] Export model package
 
 ## Phase 7: API Layer
 - [ ] Build backend API endpoints

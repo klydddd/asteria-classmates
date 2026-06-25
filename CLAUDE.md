@@ -37,8 +37,11 @@ All pipeline logic lives in `src/bosesph/`. The CLI (`cli.py`) is a thin argpars
 - **`transcripts.py`** — Deterministic transcript normalization (Unicode NFC, whitespace, punctuation, annotation casing) with a JSON audit trail.
 - **`review.py`** — Resumable interactive terminal review for pending/needs-review clips. Decisions persist immediately to `metadata.csv`.
 - **`dataset.py`** — Filters approved clips, performs speaker-aware train/val/test splitting, copies clean audio, and writes split CSVs plus `statistics.json` and a dataset card.
+- **`asr.py`** — Lazy-loaded ASR inference and WER/CER evaluation via HuggingFace `transformers` + `jiwer`. Reuses `audio.py` for stdlib WAV loading (no ffmpeg). Optional `[asr]` extras.
+- **`benchmark.py`** — Benchmark orchestration and report generation: baseline runs, comparison reports.
+- **`finetune.py`** — Whisper fine-tuning via `Seq2SeqTrainer` with a custom `torch.utils.data.Dataset` and speech collator. Reuses `asr._load_audio_array` for stdlib audio. Optional `[train]` extras (extends `[asr]`).
 
-Data flows linearly: `pld.py` → `ingestion.py` → `transcripts.py` → `review.py` → `dataset.py`.
+Data flows linearly: `pld.py` → `ingestion.py` → `transcripts.py` → `review.py` → `dataset.py` → `asr.py`/`benchmark.py` → `finetune.py`.
 
 ## Key Conventions
 

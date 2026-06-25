@@ -20,6 +20,10 @@ asr = [
   "numpy>=1.24",
   "jiwer>=3.0,<4",
 ]
+train = [
+  "bosesph-toolkit[asr]",
+  "accelerate>=0.26",
+]
 dev = [
   "black>=24.4,<26",
   "pytest>=8.2,<9",

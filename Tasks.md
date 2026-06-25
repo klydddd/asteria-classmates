@@ -475,6 +475,13 @@ Report should include:
 
 ## 6.1 Prepare training data
 
+**Status: Complete (June 25, 2026).** `_load_split_clips()` reads a split CSV
+and returns `(audio_path, transcript)` pairs. `_build_example()` uses the
+existing stdlib `audio.py` reader (via `asr._load_audio_array`) and a Whisper
+processor to produce `input_features` + `labels` dicts. A custom
+`WhisperDataset(torch.utils.data.Dataset)` wraps the clip list for
+`Seq2SeqTrainer`. No `datasets` library or ffmpeg needed.
+
 Convert dataset into the format expected by the training library.
 
 Required fields:
@@ -489,6 +496,10 @@ language
 
 ## 6.2 Choose base ASR model
 
+**Status: Complete (June 25, 2026).** Default base model is
+`openai/whisper-tiny` (~39M params), configurable via `--base-model`.
+Whisper-tiny is fast enough to fine-tune and demo on a laptop (MPS/CPU).
+
 Recommended for MVP:
 
 ```text
@@ -501,20 +512,31 @@ Use a smaller model first to make training faster.
 
 ## 6.3 Run fine-tuning
 
+**Status: Complete (June 25, 2026).** Implemented as `bosesph finetune`
+subcommand (not the literal `ml/training/train_asr.py` script from the
+original plan). Uses HuggingFace `Seq2SeqTrainer` with a custom
+`_DataCollatorSpeechSeq2Seq` collator. The `--language` flag defaults to `tl`
+(Tagalog) as a proxy because Whisper has no Kapampangan token. Empty/missing
+validation splits are tolerated (eval-during-training is skipped).
+
 Training script should accept:
 
 ```bash
-python ml/training/train_asr.py \
-  --train_csv outputs/dataset/train.csv \
-  --val_csv outputs/dataset/validation.csv \
-  --base_model openai/whisper-small \
-  --language kapampangan \
-  --output_dir outputs/model/bosesph-kapampangan-v1
+bosesph finetune outputs/dataset \
+  --output outputs/model/bosesph-kapampangan-v1 \
+  --base-model openai/whisper-tiny \
+  --language tl \
+  --max-steps 5 --train-split train
 ```
 
 **Done when:** A fine-tuned model checkpoint is saved.
 
 ## 6.4 Evaluate fine-tuned model
+
+**Status: Complete (June 25, 2026).** Fine-tuned models are evaluated using the
+existing `bosesph transcribe --model <model_dir>` + `bosesph evaluate` commands
+(no new inference code). `bosesph compare` generates a side-by-side comparison
+report with WER/CER deltas and an "improved / regressed" verdict.
 
 Compare:
 
@@ -526,6 +548,12 @@ Compare:
 **Done when:** The report shows whether fine-tuning improved results.
 
 ## 6.5 Export model package
+
+**Status: Complete (June 25, 2026).** `finetune_model()` saves the model +
+processor via `trainer.save_model()` + `processor.save_pretrained()`, writes
+`training_config.json` and an auto-generated `model_card.md` with base model
+info, training settings, a usage snippet, and limitations (Kapampangan-on-`tl`
+proxy, single-speaker data caveat).
 
 Output:
 
