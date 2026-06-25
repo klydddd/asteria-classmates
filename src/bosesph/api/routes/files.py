@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import math
 import zipfile
 from pathlib import Path
 
@@ -19,14 +20,29 @@ router = APIRouter(tags=["files"])
 def _read_json(path: Path) -> dict[str, object] | None:
     if not path.is_file():
         return None
-    return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
 
 
 def _metric_summary(path: Path) -> dict[str, float] | None:
     data = _read_json(path)
     if data is None or "wer" not in data or "cer" not in data:
         return None
-    return {"wer": float(data["wer"]), "cer": float(data["cer"])}
+    wer = data["wer"]
+    cer = data["cer"]
+    if (
+        isinstance(wer, bool)
+        or not isinstance(wer, (int, float))
+        or not math.isfinite(wer)
+        or isinstance(cer, bool)
+        or not isinstance(cer, (int, float))
+        or not math.isfinite(cer)
+    ):
+        return None
+    return {"wer": float(wer), "cer": float(cer)}
 
 
 @router.get("/project-status", response_model=ProjectStatus)

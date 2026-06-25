@@ -280,6 +280,79 @@ def test_project_status_uses_none_for_missing_outputs(
     }
 
 
+def test_project_status_ignores_malformed_artifacts_independently(
+    client: tuple[TestClient, Path],
+) -> None:
+    test_client, workspace = client
+    dataset = workspace / "dataset"
+    baseline = workspace / "benchmark" / "baseline"
+    finetuned = workspace / "benchmark" / "finetuned"
+    model = workspace / "model" / "bosesph-kapampangan-v1"
+    dataset.mkdir(parents=True)
+    baseline.mkdir(parents=True)
+    finetuned.mkdir(parents=True)
+    model.mkdir(parents=True)
+
+    (dataset / "dataset_stats.json").write_text("{invalid", encoding="utf-8")
+    (baseline / "results.json").write_text(
+        json.dumps({"wer": 0.91, "cer": 0.52}),
+        encoding="utf-8",
+    )
+    (finetuned / "results.json").write_text("{invalid", encoding="utf-8")
+    (model / "model_card.md").write_text("# Model", encoding="utf-8")
+
+    response = test_client.get("/project-status")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "dataset_available": False,
+        "dataset_stats": None,
+        "baseline_metrics": {"wer": 0.91, "cer": 0.52},
+        "finetuned_metrics": None,
+        "model_available": True,
+        "model_dir": "model/bosesph-kapampangan-v1",
+        "model_version": "bosesph-kapampangan-v1",
+    }
+
+
+@pytest.mark.parametrize(
+    "metrics",
+    [
+        [],
+        "not-an-object",
+        1,
+        {"wer": "0.91", "cer": 0.52},
+        {"wer": True, "cer": 0.52},
+        {"wer": 0.91, "cer": False},
+        {"wer": float("inf"), "cer": 0.52},
+        {"wer": 0.91, "cer": float("nan")},
+    ],
+)
+def test_project_status_rejects_invalid_metric_artifacts(
+    client: tuple[TestClient, Path],
+    metrics: object,
+) -> None:
+    test_client, workspace = client
+    baseline = workspace / "benchmark" / "baseline"
+    finetuned = workspace / "benchmark" / "finetuned"
+    baseline.mkdir(parents=True)
+    finetuned.mkdir(parents=True)
+    (baseline / "results.json").write_text(
+        json.dumps(metrics),
+        encoding="utf-8",
+    )
+    (finetuned / "results.json").write_text(
+        json.dumps({"wer": 0.75, "cer": 0.34}),
+        encoding="utf-8",
+    )
+
+    response = test_client.get("/project-status")
+
+    assert response.status_code == 200
+    assert response.json()["baseline_metrics"] is None
+    assert response.json()["finetuned_metrics"] == {"wer": 0.75, "cer": 0.34}
+
+
 def test_transcribe_job_uses_lazy_asr_services(
     client: tuple[TestClient, Path],
     monkeypatch: pytest.MonkeyPatch,
