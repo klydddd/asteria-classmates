@@ -263,6 +263,12 @@ kap_000003.wav
 
 ## 3.1 Create transcript input format
 
+**Status: Complete (June 25, 2026).** For the selected PLD-first MVP scope,
+Phase 3 consumes the validated `metadata.csv` produced by `bosesph import-pld`.
+This preserves one metadata contract across ingestion, normalization, review,
+and the future dataset builder. Generic transcript CSV manifests remain a later
+extension.
+
 Support transcript upload through CSV:
 
 ```csv
@@ -273,6 +279,13 @@ kap_raw_01.wav,Masanting ya ing aldo,Kapampangan,spk_001
 **Done when:** The pipeline can match audio files with their transcripts.
 
 ## 3.2 Build transcript normalizer
+
+**Status: Complete (June 25, 2026).** `bosesph normalize-transcripts DATASET`
+normalizes Unicode, whitespace, punctuation spacing, repeated punctuation,
+supported tag casing, sentence initials, and control characters without
+respelling or translating spoken content. It atomically updates `metadata.csv`
+and writes `normalization_report.json`; ambiguous symbols are retained and
+routed to `needs_review`.
 
 Normalize:
 
@@ -286,6 +299,12 @@ Normalize:
 **Done when:** Transcript cleaning script outputs normalized text.
 
 ## 3.3 Add reviewer validation
+
+**Status: Complete (June 25, 2026).** `bosesph review DATASET` provides a
+resumable terminal review flow for `pending` and `needs_review` rows. Reviewers
+see the audio path, transcript, language, speaker metadata, duration, notes, and
+required checklist. Decisions are checkpointed immediately. The existing
+`needs_review` status represents the task list's `needs_fix` decision.
 
 For each clip, reviewers should check:
 

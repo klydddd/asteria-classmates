@@ -63,7 +63,7 @@ that must reuse the same Python pipeline rather than duplicate its logic.
 
 ## Current Status
 
-Phases 1 and 2 are implemented for the selected PLD Kapampangan session
+Phases 1 through 3 are implemented for the selected PLD Kapampangan session
 workflow:
 
 - Metadata schema and transcription guidance are documented.
@@ -75,11 +75,14 @@ workflow:
 - Output names are assigned deterministically as `pam_000001.wav`,
   `pam_000002.wav`, and so on.
 - Clip-level outcomes are recorded without aborting the complete import.
+- Transcripts are normalized conservatively with a JSON before/after audit.
+- Pending and needs-review clips can be approved, marked for fixes, rejected,
+  skipped, or reviewed later through a resumable terminal workflow.
 
-The following stages remain planned: generic transcript import, transcript
-normalization, reviewer approval, final dataset construction, speaker-aware
-splitting, dataset statistics, baseline ASR inference, WER/CER evaluation,
-fine-tuning, release packaging, and optional API or demo interfaces.
+The following stages remain planned: generic transcript import, final dataset
+construction, speaker-aware splitting, dataset statistics, baseline ASR
+inference, WER/CER evaluation, fine-tuning, release packaging, and optional API
+or demo interfaces.
 
 ## Current CLI Usage
 
@@ -125,6 +128,30 @@ outputs/dataset/
 Non-quiet clips between 5 and 15 seconds are marked `pending`. Other readable
 clips are retained as `needs_review`. Corrupt, empty, silent, or unmatched
 inputs are reported as `rejected`.
+
+Normalize the imported transcripts:
+
+```bash
+bosesph normalize-transcripts outputs/dataset
+```
+
+This updates `metadata.csv` and writes `normalization_report.json` with each
+row's original text, normalized text, applied rules, and unresolved warnings.
+Exit code `1` means normalization completed but one or more transcripts still
+need human review. Exit code `2` means the input was invalid or unreadable.
+
+Review pending clips interactively:
+
+```bash
+bosesph review outputs/dataset
+```
+
+The command prints each audio path for playback in an external audio player,
+then shows the transcript, language, speaker metadata, existing notes, and
+review checklist. Actions are approve (`a`), needs fix (`f`), reject (`r`),
+skip (`s`), and quit (`q`). Needs-fix and rejection decisions require a note.
+Each decision is saved immediately, so a later run resumes with unfinished
+clips. Phase 4 will include only rows marked `approved`.
 
 ## Planned CLI Workflow
 

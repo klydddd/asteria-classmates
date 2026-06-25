@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import builtins
 import csv
 import json
 from pathlib import Path
+
+import pytest
 
 from bosesph.cli import main
 from bosesph.metadata import MetadataRecord
@@ -184,3 +187,97 @@ def test_import_pld_cli_missing_source_returns_exit_two(
 
     assert exit_code == 2
     assert "Input error:" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
+def write_phase_three_dataset(
+    dataset: Path,
+    *,
+    transcript: str = "  masanting...  ",
+) -> None:
+    audio_dir = dataset / "audio_clean"
+    audio_dir.mkdir(parents=True)
+    write_pcm_wav(audio_dir / "pam_000001.wav", duration=6)
+    row = {
+        "audio_id": "pam_000001",
+        "file_path": "audio_clean/pam_000001.wav",
+        "transcript": transcript,
+        "language": "pam",
+        "speaker_id": "spk_001",
+        "duration_seconds": "6",
+        "sample_rate": "16000",
+        "split": "unassigned",
+        "quality_status": "pending",
+    }
+    with (dataset / "metadata.csv").open(
+        "w",
+        encoding="utf-8",
+        newline="",
+    ) as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(row))
+        writer.writeheader()
+        writer.writerow(row)
+
+
+def test_normalize_transcripts_cli_reports_counts(
+    tmp_path: Path,
+    capsys: object,
+) -> None:
+    dataset = tmp_path / "dataset"
+    write_phase_three_dataset(dataset)
+
+    exit_code = main(["normalize-transcripts", str(dataset)])
+    captured = capsys.readouterr()  # type: ignore[attr-defined]
+
+    assert exit_code == 0
+    assert "Changed: 1" in captured.out
+    assert "Unchanged: 0" in captured.out
+    assert "Needs review: 0" in captured.out
+    assert (dataset / "normalization_report.json").exists()
+
+
+def test_normalize_transcripts_cli_returns_one_for_warnings(
+    tmp_path: Path,
+    capsys: object,
+) -> None:
+    dataset = tmp_path / "dataset"
+    write_phase_three_dataset(dataset, transcript="Masanting 🙂")
+
+    exit_code = main(["normalize-transcripts", str(dataset)])
+
+    assert exit_code == 1
+    assert "Needs review: 1" in capsys.readouterr().out  # type: ignore[attr-defined]
+
+
+def test_phase_three_cli_invalid_input_returns_two(
+    tmp_path: Path,
+    capsys: object,
+) -> None:
+    dataset = tmp_path / "missing"
+
+    normalize_exit = main(["normalize-transcripts", str(dataset)])
+    normalize_output = capsys.readouterr()  # type: ignore[attr-defined]
+    review_exit = main(["review", str(dataset)])
+    review_output = capsys.readouterr()  # type: ignore[attr-defined]
+
+    assert normalize_exit == 2
+    assert review_exit == 2
+    assert "Input error:" in normalize_output.err
+    assert "Input error:" in review_output.err
+
+
+def test_review_cli_uses_terminal_input_and_prints_summary(
+    tmp_path: Path,
+    capsys: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dataset = tmp_path / "dataset"
+    write_phase_three_dataset(dataset, transcript="Masanting.")
+    responses = iter(["a"])
+    monkeypatch.setattr(builtins, "input", lambda _: next(responses))
+
+    exit_code = main(["review", str(dataset)])
+    captured = capsys.readouterr()  # type: ignore[attr-defined]
+
+    assert exit_code == 0
+    assert "Approved: 1" in captured.out
+    assert "Remaining: 0" in captured.out

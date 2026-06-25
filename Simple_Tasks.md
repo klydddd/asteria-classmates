@@ -17,9 +17,9 @@
 - [x] Rename files consistently
 
 ## Phase 3: Transcription and Validation
-- [ ] Create transcript input format
-- [ ] Build transcript normalizer
-- [ ] Add reviewer validation flow
+- [x] Create transcript input format
+- [x] Build transcript normalizer
+- [x] Add reviewer validation flow
 
 ## Phase 4: Dataset Builder
 - [ ] Generate final dataset folder structure

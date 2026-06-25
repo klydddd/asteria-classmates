@@ -13,6 +13,8 @@ from bosesph.ingestion import IngestionError, import_pld_session
 from bosesph.metadata import MetadataRecord, Severity, ValidationReport
 from bosesph.metadata import validate_metadata_csv as validate_csv
 from bosesph.pld import PldParseError
+from bosesph.review import ReviewError, review_dataset
+from bosesph.transcripts import TranscriptDatasetError, normalize_dataset
 
 
 class ArgumentParser(argparse.ArgumentParser):
@@ -64,6 +66,18 @@ def build_parser() -> ArgumentParser:
     import_parser.add_argument("source", type=Path)
     import_parser.add_argument("--output", type=Path, required=True)
     import_parser.add_argument("--overwrite", action="store_true")
+
+    normalize_parser = commands.add_parser(
+        "normalize-transcripts",
+        help="normalize transcripts in a generated dataset",
+    )
+    normalize_parser.add_argument("dataset", type=Path)
+
+    review_parser = commands.add_parser(
+        "review",
+        help="interactively review pending dataset clips",
+    )
+    review_parser.add_argument("dataset", type=Path)
     return parser
 
 
@@ -138,6 +152,34 @@ def _run_import_pld(source: Path, output: Path, overwrite: bool) -> int:
     return 0
 
 
+def _run_normalize_transcripts(dataset: Path) -> int:
+    try:
+        report = normalize_dataset(dataset)
+    except TranscriptDatasetError as error:
+        _print_input_error(str(error), "text")
+        return 2
+    print(f"Normalized transcripts in {dataset}")
+    print(f"Changed: {report.changed}")
+    print(f"Unchanged: {report.unchanged}")
+    print(f"Needs review: {report.needs_review}")
+    return 1 if report.needs_review else 0
+
+
+def _run_review(dataset: Path) -> int:
+    try:
+        summary = review_dataset(dataset, input_fn=input, output_fn=print)
+    except ReviewError as error:
+        _print_input_error(str(error), "text")
+        return 2
+    print("Review session complete.")
+    print(f"Approved: {summary.approved}")
+    print(f"Needs fix: {summary.needs_fix}")
+    print(f"Rejected: {summary.rejected}")
+    print(f"Skipped: {summary.skipped}")
+    print(f"Remaining: {summary.remaining}")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return its documented process exit code."""
     try:
@@ -151,6 +193,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_export_schema(args.output)
     if args.command == "import-pld":
         return _run_import_pld(args.source, args.output, args.overwrite)
+    if args.command == "normalize-transcripts":
+        return _run_normalize_transcripts(args.dataset)
+    if args.command == "review":
+        return _run_review(args.dataset)
     return 2
 
 

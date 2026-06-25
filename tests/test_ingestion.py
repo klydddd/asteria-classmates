@@ -14,6 +14,8 @@ from bosesph.ingestion import (
 )
 from bosesph.metadata import validate_metadata_csv
 from bosesph.pld import PldParseError
+from bosesph.review import review_dataset
+from bosesph.transcripts import normalize_dataset
 from tests.audio_fixtures import write_pcm_wav
 
 
@@ -187,3 +189,26 @@ def test_invalid_source_leaves_existing_output_untouched(tmp_path: Path) -> None
         import_pld_session(source, output, overwrite=True)
 
     assert (output / "keep.txt").read_text(encoding="utf-8") == "existing"
+
+
+def test_pld_import_normalize_and_review_workflow(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    output = tmp_path / "dataset"
+    write_session(source, [("clip.wav", "  masanting...  ")])
+    write_pcm_wav(source / "clip.wav", duration=6)
+
+    import_pld_session(source, output)
+    normalization = normalize_dataset(output)
+    responses = iter(["a"])
+    review = review_dataset(
+        output,
+        input_fn=lambda _: next(responses),
+        output_fn=lambda _: None,
+    )
+
+    row = read_metadata(output / "metadata.csv")[0]
+    assert normalization.changed == 1
+    assert row["transcript"] == "Masanting."
+    assert row["quality_status"] == "approved"
+    assert review.approved == 1
+    assert validate_metadata_csv(output / "metadata.csv").error_count == 0
