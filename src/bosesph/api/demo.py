@@ -58,6 +58,15 @@ def _is_safe_model_tree(model_dir: Path, workspace: Path) -> bool:
 
 
 def _find_finetuned_model(workspace: Path) -> Path | None:
+    # Prefer the Colab-trained Whisper Small LoRA model (language=tl).
+    preferred = workspace / "model" / "colab_finetuned_model_tl"
+    if (
+        preferred.is_dir()
+        and (preferred / "model" / "config.json").is_file()
+    ):
+        return preferred
+
+    # Fallback: scan outputs/model/ for any valid fine-tuned model.
     model_root = workspace / "model"
     if not model_root.is_dir():
         return None
@@ -104,7 +113,7 @@ def discover_demo_options(workspace: Path) -> DemoOptions:
             ),
             DemoModelOption(
                 id="finetuned",
-                label="BosesPH fine-tuned model",
+                label="BosesPH Whisper Small (LoRA fine-tuned)",
                 model_path=(
                     str((candidate / "model").relative_to(workspace))
                     if candidate
@@ -199,12 +208,14 @@ def run_demo_transcription(
 
         progress_fn("loading-model")
         pipe = load_model(model.model_path)
+        print(f"[DEMO] Model: {model.model_path} ({model.label})")
         progress_fn("transcribing")
         prediction = transcribe_file(
             pipe,
             audio_path,
             language=decoding_language,
         )
+        print(f"[DEMO] Transcript: {prediction}")
         wer: float | None = None
         cer: float | None = None
         if reference and reference.strip():
@@ -216,6 +227,7 @@ def run_demo_transcription(
             )
             wer = round(metrics.wer, 4)
             cer = round(metrics.cer, 4)
+            print(f"[DEMO] WER: {wer:.2%} | CER: {cer:.2%}")
         return DemoTranscriptionResult(
             prediction=prediction,
             model_id=model.id,

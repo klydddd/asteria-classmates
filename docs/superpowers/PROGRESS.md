@@ -76,7 +76,7 @@ Base URL comes from `process.env.NEXT_PUBLIC_API_BASE_URL` (falls back to `http:
 
 ---
 
-### Task 3 ✅ — Nav Component + Layout (tests pass, NOT YET COMMITTED)
+### Task 3 ✅ — Nav Component + Layout (committed)
 
 **Files created/modified:**
 - `apps/web/components/nav.tsx` — top nav with BosesPH wordmark, Dashboard + Demo links, active-link underline via `usePathname()`
@@ -90,17 +90,13 @@ vi.mock("next/navigation", () => ({
 }));
 ```
 
-**TO DO BEFORE COMMITTING TASK 3:** Run `git add` and commit with message `feat(web): add Nav component and update layout`.
-
 ---
 
-## Remaining Tasks
+### Task 4 ✅ — StatusCard Component
 
-### Task 4 — StatusCard Component
-
-**Files to create:**
+**Files created:**
 - `apps/web/components/status-card.tsx`
-- `apps/web/__tests__/status-card.test.tsx`
+- `apps/web/__tests__/status-card.test.tsx` — 3 tests, all passing
 
 **Component interface:**
 ```tsx
@@ -111,12 +107,12 @@ Renders a shadcn `<Card>` with label, large value, and `<Skeleton data-testid="s
 
 ---
 
-### Task 5 — DashboardGrid + Dashboard Page
+### Task 5 ✅ — DashboardGrid + Dashboard Page
 
-**Files to create/modify:**
+**Files created/modified:**
 - `apps/web/components/dashboard-grid.tsx` — Client Component, polls `getProjectStatus()` every 10s via `setInterval`, shows 7 `<StatusCard>` components in a responsive grid
-- `apps/web/app/page.tsx` — replace stub `<main />` with `<DashboardGrid />`
-- `apps/web/__tests__/dashboard-grid.test.tsx`
+- `apps/web/app/page.tsx` — renders `<DashboardGrid />`
+- `apps/web/__tests__/dashboard-grid.test.tsx` — 6 tests, all passing
 
 **7 cards and their data sources:**
 
@@ -132,13 +128,15 @@ Renders a shadcn `<Card>` with label, large value, and `<Skeleton data-testid="s
 
 Error state: banner + Retry button. "Last updated HH:MM:SS" timestamp updates each poll.
 
+**Test note — fake timers:** The polling test uses `vi.useFakeTimers({ shouldAdvanceTime: true })` and asserts that calls increase after `vi.advanceTimersByTime(10_000)`, avoiding exact call-count assertions that are fragile with `shouldAdvanceTime`.
+
 ---
 
-### Task 6 — DemoForm Component
+### Task 6 ✅ — DemoForm Component
 
-**Files to create:**
+**Files created:**
 - `apps/web/components/demo-form.tsx`
-- `apps/web/__tests__/demo-form.test.tsx`
+- `apps/web/__tests__/demo-form.test.tsx` — 4 tests, all passing
 
 **Component interface:**
 ```tsx
@@ -146,7 +144,7 @@ Error state: banner + Retry button. "Last updated HH:MM:SS" timestamp updates ea
 ```
 
 Fields:
-- Audio file input (`data-testid="audio-input"`, accepts `.wav,.mp3,.flac,.ogg`) — drag-drop zone
+- Audio file input (`data-testid="audio-input"`, accepts `.wav,.mp3,.flac,.ogg`) — drag-drop zone with upload icon
 - Language `<Select>` populated from `options.languages`, defaults to `options.default_language_id`
 - Model `<Select>` populated from `options.models`, unavailable models are disabled, defaults to `options.default_model_id`
 - Reference `<Textarea>` (optional, enables WER/CER in results)
@@ -156,46 +154,47 @@ On submit: builds `FormData` with fields `audio`, `language_id`, `model_id`, `re
 
 ---
 
-### Task 7 — DemoStepper Component
+### Task 7 ✅ — DemoStepper Component
 
-**Files to create:**
+**Files created:**
 - `apps/web/components/demo-stepper.tsx`
-- `apps/web/__tests__/demo-stepper.test.tsx`
+- `apps/web/__tests__/demo-stepper.test.tsx` — 5 tests, all passing
 
 **Component interface:**
 ```tsx
 <DemoStepper step={"uploading"|"transcribing"|"done"|"error"} error?: string onRetry: () => void />
 ```
 
-3-step horizontal stepper: Upload → Transcribe → Done. Each step circle has `data-testid="step-{key}-{status}"` where status is `active`, `done`, or `error`. Error state shows red indicator, error message, and "Try again" button that calls `onRetry`.
+3-step horizontal stepper: Upload → Transcribe → Done. Each step circle has `data-testid="step-{key}-{status}"` where status is `active`, `done`, `error`, or `pending`. Error state shows red indicator, error message, and "Try again" button that calls `onRetry`.
 
 ---
 
-### Task 8 — DemoResult Component
+### Task 8 ✅ — DemoResult Component
 
-**Files to create:**
+**Files created:**
 - `apps/web/components/demo-result.tsx`
-- `apps/web/__tests__/demo-result.test.tsx`
+- `apps/web/__tests__/demo-result.test.tsx` — 6 tests, all passing
 
 **Component interface:**
 ```tsx
-<DemoResult result={DemoTranscriptionResult} filename={string} onReset={() => void} />
+<DemoResult result={DemoTranscriptionResult} filename={string} audioUrl?: string onReset={() => void} />
 ```
 
 Renders:
 - Header: `filename` + `result.model_label`
-- `<audio data-testid="audio-player" controls />` (browser-native, no waveform library)
+- `<audio data-testid="audio-player" controls />` (browser-native, no waveform library) — only when `audioUrl` is provided
 - Transcript text block: `result.prediction`
 - WER/CER `<Badge>` chips (`"WER: XX.X%"`, `"CER: XX.X%"`) — only if `result.wer` and `result.cer` are non-null
 - "Try another file" `<Button>` that calls `onReset`
 
 ---
 
-### Task 9 — Demo Page (wire-up)
+### Task 9 ✅ — Demo Page (wire-up)
 
-**Files to create:**
-- `apps/web/app/demo/page.tsx`
-- `apps/web/__tests__/demo-page.test.tsx`
+**Files created:**
+- `apps/web/components/demo-page.tsx` — Client Component with full state machine
+- `apps/web/app/demo/page.tsx` — Next.js route wrapper with metadata
+- `apps/web/__tests__/demo-page.test.tsx` — 4 tests, all passing
 
 **State machine:**
 ```ts
@@ -213,15 +212,42 @@ Flow:
 4. `job.status === "failed"` → transition to `"error"`
 5. "Try again" or "Try another file" → reset to `"form"`
 
-The stepper is always visible once out of form state. The result panel appears below stepper on success.
+The stepper is always visible once out of form state. The result panel appears below stepper on success. Audio playback is supported via `URL.createObjectURL` on the uploaded file.
+
+---
+
+## Test Infrastructure Note
+
+**`vitest.setup.ts` cleanup:** Added explicit `cleanup()` from `@testing-library/react` in `afterEach` to prevent DOM leakage between tests (React 19 + jsdom doesn't auto-cleanup reliably):
+```ts
+import { cleanup } from "@testing-library/react";
+import { afterEach } from "vitest";
+afterEach(() => { cleanup(); });
+```
 
 ---
 
 ## Known Vitest Quirks
 
 - **`next/link` mock causes double renders:** `vi.mock("next/link", ...)` loads both ESM and CJS versions, duplicating DOM nodes. Use `container.querySelectorAll("a")` in tests instead of `screen.getByRole("link")`.
-- **Timer tests:** Use `vi.useFakeTimers()` / `vi.useRealTimers()` in `beforeEach`/`afterEach` when testing polling behavior. Wrap timer advances with `await act(async () => { vi.advanceTimersByTime(N); await vi.runAllTimersAsync(); })`.
+- **Timer tests with polling:** `vi.runAllTimersAsync()` with `setInterval` causes infinite loops. Use `vi.useFakeTimers({ shouldAdvanceTime: true })` + `vi.advanceTimersByTime()` and assert call count increases rather than exact counts.
 - **Fetch mocking:** Use `vi.stubGlobal("fetch", vi.fn())` in `beforeEach`. `mockResolvedValueOnce(new Response(JSON.stringify(data), { status }))`.
+
+---
+
+## Test Summary
+
+| Test File | Tests | Status |
+|---|---:|---|
+| `api.test.ts` | 5 | ✅ |
+| `nav.test.tsx` | 3 | ✅ |
+| `status-card.test.tsx` | 3 | ✅ |
+| `dashboard-grid.test.tsx` | 6 | ✅ |
+| `demo-form.test.tsx` | 4 | ✅ |
+| `demo-stepper.test.tsx` | 5 | ✅ |
+| `demo-result.test.tsx` | 6 | ✅ |
+| `demo-page.test.tsx` | 4 | ✅ |
+| **Total** | **36** | **All passing** |
 
 ---
 
@@ -232,3 +258,29 @@ The stepper is always visible once out of form state. The result panel appears b
 - CSS palette: parchment `#f4f1e8`, dark `#17231b`, red accent `#b33a2b`, border `#d7d0c0`, surface `#fffdf7`
 - Font: Georgia/serif for body + headings, Geist (sans) for shadcn UI elements
 - Package manager: pnpm (run all commands inside `apps/web/`)
+
+## File Map
+
+```
+apps/web/
+├── app/
+│   ├── globals.css
+│   ├── layout.tsx          ← RootLayout + Nav + Geist font
+│   ├── page.tsx            ← Dashboard (renders DashboardGrid)
+│   └── demo/
+│       └── page.tsx        ← Demo route (renders DemoPage)
+├── components/
+│   ├── nav.tsx             ← Top navigation
+│   ├── status-card.tsx     ← Single metric card
+│   ├── dashboard-grid.tsx  ← 7-card grid with polling
+│   ├── demo-form.tsx       ← Upload + selects + submit
+│   ├── demo-stepper.tsx    ← 3-step progress indicator
+│   ├── demo-result.tsx     ← Transcript + metrics display
+│   ├── demo-page.tsx       ← State machine wiring
+│   └── ui/                 ← shadcn primitives
+├── lib/
+│   └── api.ts              ← Typed API client
+├── __tests__/              ← 8 test files, 36 tests
+├── vitest.config.ts
+└── vitest.setup.ts         ← jest-dom + cleanup
+```

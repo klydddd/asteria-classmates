@@ -1,0 +1,14 @@
+[project]
+name = "bosesph-agent"
+version = "0.1.0"
+description = "Dedicated BosesPH Agent that manages the pipeline autonomously via MCP"
+requires-python = ">=3.10"
+dependencies = [
+    "anthropic>=0.30.1",
+    "mcp>=1.2.0",
+    "python-dotenv>=1.0.0"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

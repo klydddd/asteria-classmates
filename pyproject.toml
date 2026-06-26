@@ -32,6 +32,9 @@ api = [
   "uvicorn[standard]>=0.29",
   "python-multipart>=0.0.9",
 ]
+mcp = [
+  "mcp>=1.27,<2",
+]
 dev = [
   "black>=24.4,<26",
   "pytest>=8.2,<9",
@@ -41,6 +44,7 @@ dev = [
 [project.scripts]
 bosesph = "bosesph.cli:entrypoint"
 bosesph-api = "bosesph.api.server:run"
+bosesph-mcp = "bosesph.mcp.server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

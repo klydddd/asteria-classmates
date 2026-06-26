@@ -52,28 +52,32 @@ def _metric_summary(path: Path) -> dict[str, float] | None:
 def project_status(request: Request) -> ProjectStatus:
     """Return deterministic dashboard data from conventional output paths."""
     ws: Path = request.app.state.settings.workspace.resolve()
-    dataset_stats = _read_json(ws / "dataset" / "dataset_stats.json")
+    dataset_stats = _read_json(ws / "dataset_15spk" / "dataset_stats.json")
     model_root = ws / "model"
     model_dir: Path | None = None
 
     if model_root.is_dir():
-        model_dir = next(
-            (
-                child
-                for child in sorted(model_root.iterdir())
-                if child.is_dir() and (child / "model_card.md").is_file()
-            ),
-            None,
-        )
+        preferred = model_root / "colab_finetuned_model_tl"
+        if preferred.is_dir() and (preferred / "model_card.md").is_file():
+            model_dir = preferred
+        else:
+            model_dir = next(
+                (
+                    child
+                    for child in sorted(model_root.iterdir())
+                    if child.is_dir() and (child / "model_card.md").is_file()
+                ),
+                None,
+            )
 
     return ProjectStatus(
         dataset_available=dataset_stats is not None,
         dataset_stats=dataset_stats,
         baseline_metrics=_metric_summary(
-            ws / "benchmark" / "baseline" / "results.json"
+            ws / "benchmark" / "baseline_small_tl" / "results.json"
         ),
         finetuned_metrics=_metric_summary(
-            ws / "benchmark" / "finetuned" / "results.json"
+            ws / "benchmark" / "colab_small_tl" / "results.json"
         ),
         model_available=model_dir is not None,
         model_dir=str(model_dir.relative_to(ws)) if model_dir else None,

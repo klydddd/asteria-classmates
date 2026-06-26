@@ -8,236 +8,302 @@ The MVP focuses on Kapampangan while keeping the workflow reusable for other
 Philippine languages. It is a dataset and model-development toolkit—not only a
 transcription application.
 
-## What the Toolkit Will Do
+## Architecture & Ecosystem
 
-The complete workflow is designed to take a project from raw recordings to a
-documented release package:
+The BosesPH Toolkit provides multiple interfaces to interact with the core speech pipeline, making it accessible to humans, web dashboards, and AI agents.
 
-```text
-Raw audio + transcripts + metadata
-                 |
-                 v
-        Import and validation
-                 |
-                 v
- Audio standardization and transcript normalization
-                 |
-                 v
-       Human review and approval
-                 |
-                 v
- Clean dataset + train/validation/test splits
-                 |
-                 v
-   Baseline ASR transcription and WER/CER evaluation
-                 |
-                 v
-        Optional ASR fine-tuning
-                 |
-                 v
- Dataset, benchmark, model, and documentation package
+```mermaid
+graph TD
+    subgraph BosesPH Core Pipeline
+        A[Raw Audio & Transcripts] --> B(Ingest & Validate)
+        B --> C(Normalize & Review)
+        C --> D(Build Dataset)
+        D --> E(Transcribe & Evaluate)
+        E --> F[ASR Benchmark]
+        D --> G(Fine-tune ASR)
+        G --> H[Fine-tuned Model]
+    end
+
+    subgraph Interfaces
+        CLI[CLI Commands] --> BosesPH Core Pipeline
+        API[FastAPI Server] --> BosesPH Core Pipeline
+        MCP[FastMCP Server] --> BosesPH Core Pipeline
+    end
+
+    subgraph Consumers
+        Human[Developers / Reviewers] --> CLI
+        Web[Web Dashboard] --> API
+        Agent[Dedicated BosesPH Agent] --> MCP
+        LLMs[Claude / Cursor] --> MCP
+    end
 ```
-
-In practice, the pipeline will:
-
-1. Import recordings, transcripts, and available speaker or language metadata.
-2. Match each recording to its transcript and report missing or invalid inputs.
-3. Validate audio structure, duration, sample rate, channels, silence, and
-   readability without stopping the entire batch when one clip fails.
-4. Standardize usable audio to mono, 16 kHz, signed 16-bit PCM WAV and assign
-   deterministic language-prefixed IDs.
-5. Normalize transcript formatting and route questionable clips for human
-   review.
-6. Export approved clips as a clean dataset with speaker-aware
-   train/validation/test splits and summary statistics.
-7. Run a pretrained multilingual ASR model against the test split.
-8. Calculate word error rate (WER) and character error rate (CER), then produce
-   a benchmark report with representative errors and limitations.
-9. Optionally fine-tune a small ASR model and compare it with the baseline.
-10. Package the dataset, benchmark results, model artifacts, dataset card, and
-    model card so another developer can reproduce or extend the work.
-
-The command line remains the primary interface. The FastAPI backend reuses the
-same Python services for notebooks and the planned dashboard.
 
 ## Current Status
 
-Phases 1 through 7 are implemented for the selected PLD Kapampangan session
-workflow:
+| Phase | Feature | Status | Interface |
+|---|---|---|---|
+| **Phase 1** | Schema & Guidelines | ✅ Complete | Docs |
+| **Phase 2** | Audio/Transcript Ingestion | ✅ Complete | CLI, API, MCP |
+| **Phase 3** | Text Normalization & Review | ✅ Complete | CLI, API, MCP |
+| **Phase 4** | Dataset Splits & Statistics | ✅ Complete | CLI, API, MCP |
+| **Phase 5** | Baseline Evaluation (WER/CER) | ✅ Complete | CLI, API, MCP |
+| **Phase 6** | ASR Fine-tuning (LoRA) | ✅ Complete | CLI, API |
+| **Phase 7** | Model Evaluation & Comparison | ✅ Complete | CLI, API |
+| **Phase 8** | Web Dashboard & Live Demo | ✅ Complete | Web |
+| **Phase 9** | MCP Server & AI Agents | ✅ Complete | MCP, Agent |
 
-- Metadata schema and transcription guidance are documented.
-- `PLD/PAM/0400` can be imported as one local recording session.
-- Session logs and transcript rows are parsed and matched to PCM WAV files.
-- Audio is checked for corruption, emptiness, silence, quiet levels, duration,
-  sample rate, channel count, and sample width.
-- Readable audio is standardized to mono, 16 kHz, signed 16-bit PCM WAV.
-- Output names are assigned deterministically as `pam_000001.wav`,
-  `pam_000002.wav`, and so on.
-- Clip-level outcomes are recorded without aborting the complete import.
-- Transcripts are normalized conservatively with a JSON before/after audit.
-- Pending and needs-review clips can be approved, marked for fixes, rejected,
-  skipped, or reviewed later through a resumable terminal workflow.
-- Approved clips can be packaged into speaker-aware dataset splits.
-- Baseline ASR, WER/CER evaluation, benchmark reports, fine-tuning, and model
-  comparison are available through the CLI.
-- The FastAPI backend exposes the pipeline and runs heavy operations as
-  in-process background jobs.
-
-The demo dashboard and open-source release packaging remain planned.
-
-## Current CLI Usage
+## Quick Start
 
 Python 3.10 or newer is required.
 
 ```bash
+# 1. Clone and set up the environment
+git clone <repo-url> && cd bosesph-toolkit
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -e ".[api,dev]"
+
+# 2. Install the toolkit with all optional extras
+python -m pip install -e ".[asr,train,api,mcp,dev]"
+
+# 3. Import a PLD Kapampangan session
+bosesph import-pld PLD/PAM/0400 --output outputs/dataset
+
+# 4. Normalize transcripts
+bosesph normalize-transcripts outputs/dataset
+
+# 5. Review clips interactively
+bosesph review outputs/dataset
+
+# 6. Build the dataset with train/val/test splits
+bosesph build-dataset outputs/dataset --output outputs/dataset_15spk
+
+# 7. Run baseline ASR transcription
+bosesph transcribe outputs/dataset_15spk \
+  --model openai/whisper-small --language tl \
+  --split test --output outputs/benchmark/baseline_predictions.csv
+
+# 8. Evaluate baseline WER/CER
+bosesph evaluate \
+  --predictions outputs/benchmark/baseline_predictions.csv \
+  --output outputs/benchmark/baseline \
+  --model-name "Baseline Whisper Small"
+
+# 9. Fine-tune with LoRA (optional)
+bosesph finetune outputs/dataset_15spk \
+  --output outputs/model/kapampangan-lora \
+  --base-model openai/whisper-small \
+  --language tl --use-lora
+
+# 10. Evaluate fine-tuned model
+bosesph transcribe outputs/dataset_15spk \
+  --model outputs/model/kapampangan-lora/model --language tl \
+  --split test --output outputs/benchmark/finetuned_predictions.csv
+
+bosesph evaluate \
+  --predictions outputs/benchmark/finetuned_predictions.csv \
+  --output outputs/benchmark/finetuned \
+  --model-name "BosesPH LoRA Fine-tuned"
+
+# 11. Compare baseline vs fine-tuned
+bosesph compare \
+  --baseline outputs/benchmark/baseline/results.json \
+  --finetuned outputs/benchmark/finetuned/results.json \
+  --output outputs/benchmark/comparison.md
 ```
 
-Run the API:
+## Web Dashboard & Live Demo
+
+The web dashboard provides a pipeline overview and live transcription demo.
+
+```bash
+# Start the API backend
+PYTHONPATH=src bosesph-api
+# → http://localhost:8000 (OpenAPI docs at /docs)
+
+# Start the Next.js frontend
+cd apps/web && pnpm install && pnpm dev
+# → http://localhost:3000
+```
+
+### Dashboard Page (`/`)
+
+Shows 7 real-time status cards that poll the API every 10 seconds:
+
+| Card | Source |
+|---|---|
+| Dataset Clips | `dataset_stats.total_clips` |
+| Approved Clips | `dataset_stats.approved_clips` |
+| Speakers | `dataset_stats.num_speakers` |
+| Total Minutes | `dataset_stats.total_duration_minutes` |
+| Baseline WER | `baseline_metrics.wer` |
+| Fine-tuned WER | `finetuned_metrics.wer` |
+| Model Version | `model_version` |
+
+### Demo Page (`/demo`)
+
+1. Upload a WAV audio file (drag-and-drop or file picker)
+2. Select language (Kapampangan or auto-detect)
+3. Select model (Whisper Small baseline or BosesPH LoRA fine-tuned)
+4. Optionally paste a reference transcript for WER/CER scoring
+5. Click **Transcribe** and see the result with metrics
+
+The demo uses the `colab_finetuned_model_tl` model — **Whisper Small** fine-tuned with LoRA on 4,065 Kapampangan clips using `language=tl` (Tagalog proxy).
+
+## FastAPI Backend
 
 ```bash
 bosesph-api
 ```
 
-The default workspace is `outputs/`, the default address is
+The default workspace is the project root (`.`), the default address is
 `http://0.0.0.0:8000`, and OpenAPI documentation is available at `/docs`.
-Override settings with `BOSESPH_WORKSPACE`, `BOSESPH_HOST`, `BOSESPH_PORT`, and
-`BOSESPH_MAX_WORKERS`.
 
-Validate metadata or regenerate the checked-in JSON schema:
+Override settings with environment variables:
+
+| Variable | Default | Description |
+|---|---|---|
+| `BOSESPH_WORKSPACE` | `.` | Root directory for pipeline I/O |
+| `BOSESPH_HOST` | `0.0.0.0` | Bind address |
+| `BOSESPH_PORT` | `8000` | Bind port |
+| `BOSESPH_MAX_WORKERS` | `2` | Thread pool size for background jobs |
+
+### API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/project-status` | Dataset stats, metrics, model info |
+| `GET` | `/demo/options` | Available languages and models |
+| `POST` | `/demo/transcribe` | Submit audio for transcription |
+| `GET` | `/jobs/{id}` | Poll a background job |
+| `POST` | `/upload-audio` | Upload audio files |
+| `POST` | `/upload-transcripts` | Upload transcript CSV |
+| `POST` | `/validate-dataset` | Validate dataset metadata |
+| `POST` | `/build-dataset` | Build dataset with splits |
+| `POST` | `/transcribe` | Transcribe audio or split |
+| `POST` | `/evaluate` | Compute WER/CER |
+| `POST` | `/train` | Start fine-tuning |
+| `GET` | `/download-output` | Download output files |
+
+## MCP Server, Agents & Skills
+
+For detailed instructions on the MCP server, AI agent, and custom skill, see
+[docs/MCP_AGENTS.md](docs/MCP_AGENTS.md).
+
+## CLI Reference
+
+### Import & Ingestion
 
 ```bash
-bosesph validate-metadata sample_data/metadata_template.csv
-bosesph validate-metadata metadata.csv --format json
+bosesph import-pld PLD/PAM/0400 --output outputs/dataset [--overwrite]
+```
+
+### Metadata Validation
+
+```bash
+bosesph validate-metadata sample_data/metadata_template.csv [--format json]
 bosesph export-metadata-schema --output docs/metadata.schema.json
 ```
 
-Import a PLD recording session:
-
-```bash
-bosesph import-pld PLD/PAM/0400 --output outputs/dataset
-```
-
-Use `--overwrite` to replace an existing generated directory:
-
-```bash
-bosesph import-pld PLD/PAM/0400 \
-  --output outputs/dataset \
-  --overwrite
-```
-
-The importer currently produces:
-
-```text
-outputs/dataset/
-  audio_clean/           # standardized pam_*.wav files
-  metadata.csv           # pending and needs-review clips
-  ingestion_report.json  # accepted, review, and rejected outcomes
-```
-
-Non-quiet clips between 5 and 15 seconds are marked `pending`. Other readable
-clips are retained as `needs_review`. Corrupt, empty, silent, or unmatched
-inputs are reported as `rejected`.
-
-Normalize the imported transcripts:
+### Transcript Normalization
 
 ```bash
 bosesph normalize-transcripts outputs/dataset
 ```
 
-This updates `metadata.csv` and writes `normalization_report.json` with each
-row's original text, normalized text, applied rules, and unresolved warnings.
-Exit code `1` means normalization completed but one or more transcripts still
-need human review. Exit code `2` means the input was invalid or unreadable.
+Updates `metadata.csv` and writes `normalization_report.json`. Exit code `1`
+means some transcripts still need human review. Exit code `2` means invalid
+input.
 
-Review pending clips interactively:
+### Interactive Review
 
 ```bash
 bosesph review outputs/dataset
 ```
 
-The command prints each audio path for playback in an external audio player,
-then shows the transcript, language, speaker metadata, existing notes, and
-review checklist. Actions are approve (`a`), needs fix (`f`), reject (`r`),
-skip (`s`), and quit (`q`). Needs-fix and rejection decisions require a note.
-Each decision is saved immediately, so a later run resumes with unfinished
-clips. Phase 4 will include only rows marked `approved`.
+Actions: approve (`a`), needs fix (`f`), reject (`r`), skip (`s`), quit (`q`).
+Decisions are saved immediately and resumable.
 
-## Planned CLI Workflow
-
-The target end-to-end interface is:
+### Dataset Builder
 
 ```bash
-bosesph init kapampangan-asr
-bosesph validate data/raw --transcripts data/transcripts.csv
-bosesph clean data/raw --language kapampangan
-bosesph split outputs/dataset --train 0.70 --val 0.15 --test 0.15
-bosesph transcribe sample.wav --model openai/whisper-small
-bosesph evaluate \
-  --predictions outputs/benchmark/predictions.csv \
-  --references outputs/dataset/test.csv
-bosesph train \
-  --base-model openai/whisper-small \
-  --dataset outputs/dataset
-bosesph package --output release
+bosesph build-dataset outputs/dataset --output outputs/dataset_built \
+  [--train 0.70 --val 0.15 --test 0.15 --seed 42]
 ```
 
-These commands describe the intended product flow and are not all implemented
-yet. The existing commands are listed in [Current CLI Usage](#current-cli-usage).
+### ASR Transcription
 
-## Target Output
+```bash
+# Single file
+bosesph transcribe outputs/dataset_15spk \
+  --model openai/whisper-small --language tl
 
-When the complete workflow is implemented, a run will produce:
+# Entire split
+bosesph transcribe outputs/dataset_15spk \
+  --model openai/whisper-small --language tl \
+  --split test --output outputs/benchmark/predictions.csv [--limit 300]
+```
 
-```text
-outputs/
-  dataset/
-    audio/
-    metadata.csv
-    train.csv
-    validation.csv
-    test.csv
-    statistics.json
-    dataset_card.md
-  benchmark/
-    baseline_predictions.csv
-    fine_tuned_predictions.csv
-    results.json
-    report.md
-  model/
-    bosesph-kapampangan-v1/
-      model files
-      model_card.md
+### Evaluation
+
+```bash
+bosesph evaluate \
+  --predictions outputs/benchmark/predictions.csv \
+  --output outputs/benchmark/baseline \
+  --model-name "Baseline" --language kapampangan
+```
+
+### Fine-tuning
+
+```bash
+bosesph finetune outputs/dataset_15spk \
+  --output outputs/model/bosesph-kapampangan-v1 \
+  --base-model openai/whisper-small \
+  --language tl [--use-lora --max-steps 500]
+```
+
+### Model Comparison
+
+```bash
+bosesph compare \
+  --baseline outputs/benchmark/baseline/results.json \
+  --finetuned outputs/benchmark/finetuned/results.json \
+  --output outputs/benchmark/comparison.md
 ```
 
 ## Repository Structure
 
-- `src/bosesph/` — reusable pipeline services, schemas, and CLI commands.
-- `ml/data/` — dataset preparation and transcript normalization.
-- `ml/evaluation/` — WER, CER, prediction, and benchmark utilities.
-- `ml/training/` — optional ASR fine-tuning workflows.
-- `apps/api/` — optional FastAPI wrapper around the core services.
-- `apps/web/` — optional Next.js dashboard.
-- `docs/` — architecture, dataset format, and transcription guidance.
-- `sample_data/` — small, redistributable fixtures and templates.
-- `scripts/` — repeatable setup, conversion, and export utilities.
-- `outputs/` — generated datasets, reports, and model artifacts; do not commit
-  its contents.
+```
+bosesph-toolkit/
+├── src/bosesph/         # Core pipeline: CLI, services, schemas
+│   ├── api/             # FastAPI backend
+│   └── mcp/             # MCP server (FastMCP)
+├── apps/
+│   ├── web/             # Next.js 16 dashboard & demo UI
+│   └── agent/           # Autonomous BosesPH agent
+├── .agents/skills/      # Custom skill for AI agents
+├── docs/                # Architecture, formats, guidelines
+├── sample_data/         # Small redistributable fixtures
+├── scripts/             # Setup, conversion, export utilities
+├── outputs/             # Generated datasets, models, reports (not committed)
+└── PLD/                 # Raw PLD recording sessions (not committed)
+```
 
 ## Development
 
-Run the current verification suite with:
-
 ```bash
+# Install dev dependencies
+python -m pip install -e ".[dev]"
+
+# Lint and format
 ruff check .
 black --check .
-pytest
-```
 
-Behavior changes should include deterministic tests. Use synthetic or
-explicitly consented audio fixtures and mock external model or storage calls.
+# Run Python tests
+pytest
+
+# Run frontend tests
+cd apps/web && pnpm test
+```
 
 ## Project Documents
 
@@ -249,6 +315,8 @@ explicitly consented audio fixtures and mock external model or storage calls.
   rules.
 - [Transcription Guidelines](docs/transcription_guidelines.md) — Kapampangan
   transcription and review policy.
+- [MCP, Agents & Skills](docs/MCP_AGENTS.md) — MCP server setup, AI agent,
+  and custom skill documentation.
 
 ## Data Responsibility
 

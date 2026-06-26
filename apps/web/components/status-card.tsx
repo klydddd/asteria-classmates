@@ -19,7 +19,7 @@ export default function StatusCard({ label, value, loading }: StatusCardProps) {
         {loading ? (
           <Skeleton data-testid="status-card-skeleton" className="h-8 w-24" />
         ) : (
-          <p className="text-2xl font-bold text-foreground font-serif">
+          <p className="text-2xl font-bold text-foreground font-serif break-all">
             {value ?? "—"}
           </p>
         )}
