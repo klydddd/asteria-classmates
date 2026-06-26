@@ -58,6 +58,40 @@ def poll_job(test_client: TestClient, job_id: str) -> dict[str, object]:
     raise AssertionError(f"job did not finish: {job_id}")
 
 
+def test_cors_preflight_allows_local_dashboard(
+    client: tuple[TestClient, Path],
+) -> None:
+    test_client, _ = client
+
+    response = test_client.options(
+        "/project-status",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == ("http://localhost:3000")
+
+
+def test_cors_preflight_rejects_external_origin(
+    client: tuple[TestClient, Path],
+) -> None:
+    test_client, _ = client
+
+    response = test_client.options(
+        "/project-status",
+        headers={
+            "Origin": "https://example.com",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "access-control-allow-origin" not in response.headers
+
+
 def test_upload_audio_saves_wav(
     client: tuple[TestClient, Path], tmp_path: Path
 ) -> None:

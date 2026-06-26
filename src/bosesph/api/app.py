@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from bosesph.api.jobs import JobManager
@@ -44,6 +45,16 @@ def create_app() -> FastAPI:
         app.state.jobs.shutdown()
 
     app = FastAPI(title="BosesPH Toolkit API", lifespan=lifespan)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ],
+        allow_credentials=False,
+        allow_methods=["GET", "POST"],
+        allow_headers=["*"],
+    )
     app.state.settings = settings
     app.state.jobs = job_manager
 
