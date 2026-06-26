@@ -76,6 +76,22 @@ class ColabExportConfig(BaseModel):
     gdrive_zip_id: str | None = None
 
 
+class ColabEvalConfig(BaseModel):
+    """Everything needed to render a Colab evaluation notebook."""
+
+    dataset_drive_path: str
+    model_drive_path: str
+    base_model: str = "openai/whisper-small"
+    language: str | None = "tl"
+    eval_language: str = "kapampangan"
+    split: str = "test"
+    baseline_name: str = "Baseline Whisper Small"
+    finetuned_name: str = "Fine-tuned Whisper"
+    baseline_limit: int | None = None
+    repo_url: str = DEFAULT_REPO_URL
+    repo_ref: str = DEFAULT_REPO_REF
+
+
 def parse_drive_file_id(value: str) -> str:
     """Extract a Google Drive file ID from a share link (or pass through an ID).
 
@@ -369,5 +385,118 @@ def write_notebook(config: ColabExportConfig, output_path: str | Path) -> Path:
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     notebook = build_notebook(config)
+    out.write_text(json.dumps(notebook, indent=1) + "\n", encoding="utf-8")
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Eval notebook
+# ---------------------------------------------------------------------------
+
+
+def _eval_transcribe_cell(
+    model_source: str,
+    output_csv: str,
+    config: ColabEvalConfig,
+    limit: int | None = None,
+) -> dict[str, Any]:
+    lang_arg = f" --language {config.language}" if config.language is not None else ""
+    limit_arg = f" --limit {limit}" if limit is not None else ""
+    return _code_cell(
+        f"!bosesph transcribe {{dataset_drive_path}}"
+        f" --model {model_source}"
+        f"{lang_arg}"
+        f" --split {{split}}"
+        f" --output {output_csv}"
+        f"{limit_arg}"
+    )
+
+
+def _eval_evaluate_cell(
+    predictions_csv: str,
+    output_dir: str,
+    model_name: str,
+    config: ColabEvalConfig,
+) -> dict[str, Any]:
+    return _code_cell(
+        f"!bosesph evaluate"
+        f" --predictions {predictions_csv}"
+        f" --output {output_dir}"
+        f" --model-name {model_name!r}"
+        f" --language {config.eval_language}"
+    )
+
+
+def build_eval_notebook(config: ColabEvalConfig) -> dict[str, Any]:
+    """Build the Colab eval notebook as an nbformat-v4 dict."""
+    cells: list[dict[str, Any]] = [
+        _code_cell(
+            "# Install the BosesPH toolkit (ASR extras only) from GitHub.\n"
+            f'!pip install -q "git+{config.repo_url}@{config.repo_ref}#egg=bosesph-toolkit[asr]"'
+        ),
+        _code_cell(
+            "from google.colab import drive\n"
+            "drive.mount('/content/drive')"
+        ),
+        _code_cell(
+            textwrap.dedent(f"""\
+                # === Config (edit as needed) ===
+                dataset_drive_path = {config.dataset_drive_path!r}
+                model_drive_path = {config.model_drive_path!r}
+                split = {config.split!r}
+                """)
+        ),
+        _eval_transcribe_cell(
+            config.base_model,
+            "/content/baseline_predictions.csv",
+            config,
+            limit=config.baseline_limit,
+        ),
+        _eval_evaluate_cell(
+            "/content/baseline_predictions.csv",
+            "/content/baseline_results",
+            config.baseline_name,
+            config,
+        ),
+        _eval_transcribe_cell(
+            "{model_drive_path}",
+            "/content/finetuned_predictions.csv",
+            config,
+        ),
+        _eval_evaluate_cell(
+            "/content/finetuned_predictions.csv",
+            "/content/finetuned_results",
+            config.finetuned_name,
+            config,
+        ),
+        _code_cell(
+            "!bosesph compare"
+            " --baseline /content/baseline_results/results.json"
+            " --finetuned /content/finetuned_results/results.json"
+            " --output /content/comparison.md"
+        ),
+        _code_cell(
+            "from IPython.display import Markdown, display\n"
+            "display(Markdown(open('/content/comparison.md').read()))"
+        ),
+    ]
+    return {
+        "cells": cells,
+        "metadata": {
+            "accelerator": "GPU",
+            "colab": {"provenance": []},
+            "kernelspec": {"display_name": "Python 3", "name": "python3"},
+            "language_info": {"name": "python"},
+        },
+        "nbformat": NBFORMAT,
+        "nbformat_minor": NBFORMAT_MINOR,
+    }
+
+
+def write_eval_notebook(config: ColabEvalConfig, output_path: str | Path) -> Path:
+    """Write the generated eval notebook to ``output_path`` and return the path."""
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    notebook = build_eval_notebook(config)
     out.write_text(json.dumps(notebook, indent=1) + "\n", encoding="utf-8")
     return out
