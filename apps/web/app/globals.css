@@ -1,0 +1,33 @@
+:root {
+  --background: #f4f1e8;
+  --foreground: #17231b;
+  --surface: #fffdf7;
+  --accent: #b33a2b;
+  --border: #d7d0c0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: var(--background);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--foreground);
+  background:
+    radial-gradient(circle at top left, rgb(179 58 43 / 10%), transparent 32rem),
+    var(--background);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
