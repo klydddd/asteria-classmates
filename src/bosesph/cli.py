@@ -146,14 +146,14 @@ def build_parser() -> ArgumentParser:
     )
     finetune_parser.add_argument(
         "--base-model",
-        default="openai/whisper-tiny",
+        default="openai/whisper-small",
         dest="base_model",
         help="HuggingFace model ID to fine-tune",
     )
     finetune_parser.add_argument(
         "--language",
-        default="tl",
-        help="language token for label tokenization (default: tl for Tagalog proxy)",
+        default=None,
+        help="language token for Whisper (None for unconstrained decoding)",
     )
     finetune_parser.add_argument(
         "--epochs", type=int, default=3, help="number of training epochs"
@@ -213,16 +213,16 @@ def build_parser() -> ArgumentParser:
     finetune_parser.add_argument(
         "--lora-r",
         type=int,
-        default=16,
+        default=32,
         dest="lora_r",
-        help="LoRA rank (default: 16)",
+        help="LoRA rank (default: 32)",
     )
     finetune_parser.add_argument(
         "--lora-alpha",
         type=int,
-        default=32,
+        default=64,
         dest="lora_alpha",
-        help="LoRA alpha scaling factor (default: 32)",
+        help="LoRA alpha scaling factor (default: 64)",
     )
     finetune_parser.add_argument(
         "--lora-dropout",
@@ -274,17 +274,26 @@ def build_parser() -> ArgumentParser:
         dest="drive_base",
         help="Google Drive base path for dataset and output",
     )
+    export_colab_parser.add_argument(
+        "--gdrive-zip",
+        default=None,
+        dest="gdrive_zip",
+        help=(
+            "Google Drive share link or file ID of a zipped dataset; the notebook"
+            " downloads and unzips it with gdown instead of mounting Drive"
+        ),
+    )
     # Training hyperparameters (mirror the 'finetune' command).
     export_colab_parser.add_argument(
         "--base-model",
-        default="openai/whisper-tiny",
+        default="openai/whisper-small",
         dest="base_model",
         help="HuggingFace model ID to fine-tune",
     )
     export_colab_parser.add_argument(
         "--language",
-        default="tl",
-        help="language token for label tokenization (default: tl for Tagalog proxy)",
+        default=None,
+        help="language token for Whisper (None for unconstrained decoding)",
     )
     export_colab_parser.add_argument(
         "--epochs", type=int, default=3, help="number of training epochs"
@@ -351,16 +360,16 @@ def build_parser() -> ArgumentParser:
     export_colab_parser.add_argument(
         "--lora-r",
         type=int,
-        default=16,
+        default=32,
         dest="lora_r",
-        help="LoRA rank (default: 16)",
+        help="LoRA rank (default: 32)",
     )
     export_colab_parser.add_argument(
         "--lora-alpha",
         type=int,
-        default=32,
+        default=64,
         dest="lora_alpha",
-        help="LoRA alpha scaling factor (default: 32)",
+        help="LoRA alpha scaling factor (default: 64)",
     )
     export_colab_parser.add_argument(
         "--lora-dropout",
@@ -625,7 +634,7 @@ def _run_finetune(
     *,
     output: Path,
     base_model: str,
-    language: str,
+    language: str | None,
     epochs: int,
     max_steps: int | None,
     batch_size: int,
@@ -714,8 +723,9 @@ def _run_export_colab(
     repo_url: str | None,
     repo_ref: str,
     drive_base: str,
+    gdrive_zip: str | None,
     base_model: str,
-    language: str,
+    language: str | None,
     epochs: int,
     max_steps: int | None,
     batch_size: int,
@@ -730,12 +740,15 @@ def _run_export_colab(
     lora_alpha: int,
     lora_dropout: float,
 ) -> int:
-    from bosesph.colab import ColabExportConfig, write_notebook
+    from bosesph.colab import ColabExportConfig, parse_drive_file_id, write_notebook
 
-    if not dataset.is_dir():
+    # With a Drive zip link the dataset is fetched in Colab, so a local copy
+    # is optional; otherwise the local dataset folder must exist.
+    if gdrive_zip is None and not dataset.is_dir():
         _print_input_error(f"dataset directory not found: {dataset}", "text")
         return 2
 
+    gdrive_zip_id = parse_drive_file_id(gdrive_zip) if gdrive_zip else None
     dataset_name = dataset.resolve().name
     base = drive_base.rstrip("/")
     config = ColabExportConfig(
@@ -758,15 +771,22 @@ def _run_export_colab(
         drive_dataset_path=f"{base}/{dataset_name}",
         drive_output_path=f"{base}/{dataset_name}-finetuned",
         fp16=fp16,
+        gdrive_zip_id=gdrive_zip_id,
     )
     write_notebook(config, output)
 
     print(f"Colab notebook written to: {output}")
     print("Next steps:")
-    print(f"  1. Upload your dataset folder to Drive: {config.drive_dataset_path}")
-    print("  2. Open the notebook in Google Colab and set the runtime to GPU.")
-    print("  3. Run all cells.")
-    print(f"  Trained model will be saved to: {config.drive_output_path}")
+    if gdrive_zip_id:
+        print(f"  1. Dataset will be downloaded from Drive file ID: {gdrive_zip_id}")
+        print("     (ensure the link is shared as 'Anyone with the link').")
+        print("  2. Open the notebook in Google Colab and set the runtime to GPU.")
+        print("  3. Run all cells; the trained model downloads as a zip at the end.")
+    else:
+        print(f"  1. Upload your dataset folder to Drive: {config.drive_dataset_path}")
+        print("  2. Open the notebook in Google Colab and set the runtime to GPU.")
+        print("  3. Run all cells.")
+        print(f"  Trained model will be saved to: {config.drive_output_path}")
     return 0
 
 
@@ -877,6 +897,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             repo_url=args.repo_url,
             repo_ref=args.repo_ref,
             drive_base=args.drive_base,
+            gdrive_zip=args.gdrive_zip,
             base_model=args.base_model,
             language=args.language,
             epochs=args.epochs,
