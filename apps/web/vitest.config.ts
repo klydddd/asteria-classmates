@@ -6,9 +6,15 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: { "@": path.resolve(__dirname, ".") },
+    dedupe: ["react", "react-dom", "next"],
   },
   test: {
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
+    server: {
+      deps: {
+        inline: ["next"],
+      },
+    },
   },
 });
