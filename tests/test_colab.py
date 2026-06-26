@@ -6,7 +6,12 @@ import json
 from pathlib import Path
 
 from bosesph.cli import main
-from bosesph.colab import ColabExportConfig, build_notebook, write_notebook
+from bosesph.colab import (
+    ColabExportConfig,
+    build_notebook,
+    parse_drive_file_id,
+    write_notebook,
+)
 
 
 def _config(**overrides: object) -> ColabExportConfig:
@@ -96,6 +101,12 @@ def test_notebook_mounts_drive_and_checks_gpu() -> None:
     assert "nvidia-smi" in source
 
 
+def test_notebook_removes_incompatible_torchao() -> None:
+    # Colab's preinstalled torchao breaks peft import; the notebook must drop it.
+    source = _config_source(build_notebook(_config()))
+    assert "pip uninstall -y torchao" in source
+
+
 def test_lora_and_gradient_checkpointing_toggles_reflected() -> None:
     source = _config_source(build_notebook(_config(use_lora=False)))
     assert "use_lora = False" in source
@@ -150,6 +161,54 @@ def test_cli_export_colab_missing_dataset_is_input_error(tmp_path: Path) -> None
     exit_code = main(["export-colab", str(tmp_path / "missing"), "--output", str(out)])
     assert exit_code == 2
     assert not out.exists()
+
+
+def test_parse_drive_file_id() -> None:
+    fid = "1kllfMNwiC1rA3dQlJmthLvG-iJgUcGf9"
+    assert (
+        parse_drive_file_id(f"https://drive.google.com/file/d/{fid}/view?usp=sharing")
+        == fid
+    )
+    assert parse_drive_file_id(f"https://drive.google.com/open?id={fid}") == fid
+    assert parse_drive_file_id(fid) == fid
+
+
+def test_gdrive_zip_notebook_uses_gdown_and_no_mount() -> None:
+    fid = "ABC123_-xyz"
+    source = _config_source(build_notebook(_config(gdrive_zip_id=fid)))
+    assert "gdown" in source
+    assert fid in source
+    assert "drive.mount" not in source
+    # Trains from the unzipped local copy and downloads the model zip.
+    assert "/content/data" in source
+    assert "files.download" in source
+
+
+def test_drive_folder_mode_still_mounts_by_default() -> None:
+    source = _config_source(build_notebook(_config()))
+    assert "drive.mount" in source
+    assert "gdown" not in source
+
+
+def test_cli_export_colab_with_gdrive_zip(tmp_path: Path, capsys: object) -> None:
+    out = tmp_path / "run.ipynb"
+    fid = "1kllfMNwiC1rA3dQlJmthLvG-iJgUcGf9"
+    # Local dataset need not exist when a Drive zip link is given.
+    exit_code = main(
+        [
+            "export-colab",
+            str(tmp_path / "no_local_dataset"),
+            "--output",
+            str(out),
+            "--gdrive-zip",
+            f"https://drive.google.com/file/d/{fid}/view?usp=sharing",
+        ]
+    )
+    assert exit_code == 0
+    source = _config_source(json.loads(out.read_text(encoding="utf-8")))
+    assert fid in source
+    assert "gdown" in source
+    assert "drive.mount" not in source
 
 
 def test_export_colab_does_not_import_torch() -> None:
