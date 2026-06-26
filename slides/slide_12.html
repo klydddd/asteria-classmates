@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -116,7 +117,8 @@
         }
 
         /* Accent corner weaves */
-        .slide-border::before, .slide-border::after {
+        .slide-border::before,
+        .slide-border::after {
             content: "";
             position: absolute;
             width: 32px;
@@ -124,12 +126,14 @@
             border: 5px solid var(--accent-terracotta);
             box-sizing: border-box;
         }
+
         .slide-border::before {
             top: -6px;
             left: -6px;
             border-right: none;
             border-bottom: none;
         }
+
         .slide-border::after {
             bottom: -6px;
             right: -6px;
@@ -143,12 +147,11 @@
             left: 40px;
             right: 40px;
             height: 12px;
-            background: repeating-linear-gradient(45deg, 
-                var(--accent-terracotta) 0, var(--accent-terracotta) 4px, 
-                var(--border-sepia) 4px, var(--border-sepia) 8px,
-                var(--text-heading) 8px, var(--text-heading) 12px,
-                var(--border-sepia) 12px, var(--border-sepia) 16px
-            );
+            background: repeating-linear-gradient(45deg,
+                    var(--accent-terracotta) 0, var(--accent-terracotta) 4px,
+                    var(--border-sepia) 4px, var(--border-sepia) 8px,
+                    var(--text-heading) 8px, var(--text-heading) 12px,
+                    var(--border-sepia) 12px, var(--border-sepia) 16px);
             opacity: 0.75;
             z-index: 99;
         }
@@ -159,12 +162,11 @@
             left: 40px;
             right: 40px;
             height: 12px;
-            background: repeating-linear-gradient(45deg, 
-                var(--accent-terracotta) 0, var(--accent-terracotta) 4px, 
-                var(--border-sepia) 4px, var(--border-sepia) 8px,
-                var(--text-heading) 8px, var(--text-heading) 12px,
-                var(--border-sepia) 12px, var(--border-sepia) 16px
-            );
+            background: repeating-linear-gradient(45deg,
+                    var(--accent-terracotta) 0, var(--accent-terracotta) 4px,
+                    var(--border-sepia) 4px, var(--border-sepia) 8px,
+                    var(--text-heading) 8px, var(--text-heading) 12px,
+                    var(--border-sepia) 12px, var(--border-sepia) 16px);
             opacity: 0.75;
             z-index: 99;
         }
@@ -218,7 +220,7 @@
             color: #eae5d9;
             margin-bottom: 2rem;
         }
-        
+
         #script-content p {
             margin-top: 0;
             margin-bottom: 1.25rem;
@@ -354,7 +356,7 @@
             border: 2px solid var(--border-sepia);
             border-radius: 10px;
             padding: 2rem 2.25rem;
-            box-shadow: 0 6px 15px rgba(74,66,56,0.05);
+            box-shadow: 0 6px 15px rgba(74, 66, 56, 0.05);
             position: relative;
         }
 
@@ -412,7 +414,7 @@
             font-size: 1.15rem;
             color: #d7d0c0;
             line-height: 1.5;
-            box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
             margin-top: 0.5rem;
         }
 
@@ -461,7 +463,7 @@
             border: 1px solid var(--border-sepia);
             border-radius: 8px;
             padding: 1.25rem 2rem;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.02);
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.02);
             flex-shrink: 0;
         }
 
@@ -480,9 +482,20 @@
             box-shadow: 0 0 0 2px var(--border-sepia);
         }
 
-        .scale-dot.green { background-color: var(--accent-green); box-shadow: 0 0 0 2px var(--accent-green); }
-        .scale-dot.orange { background-color: #ff9800; box-shadow: 0 0 0 2px #ff9800; }
-        .scale-dot.red { background-color: var(--accent-red); box-shadow: 0 0 0 2px var(--accent-red); }
+        .scale-dot.green {
+            background-color: var(--accent-green);
+            box-shadow: 0 0 0 2px var(--accent-green);
+        }
+
+        .scale-dot.orange {
+            background-color: #ff9800;
+            box-shadow: 0 0 0 2px #ff9800;
+        }
+
+        .scale-dot.red {
+            background-color: var(--accent-red);
+            box-shadow: 0 0 0 2px var(--accent-red);
+        }
 
         .scale-label {
             font-family: var(--font-display);
@@ -495,9 +508,17 @@
             font-weight: bold;
         }
 
-        .scale-status.green { color: var(--accent-green); }
-        .scale-status.orange { color: #ff9800; }
-        .scale-status.red { color: var(--accent-red); }
+        .scale-status.green {
+            color: var(--accent-green);
+        }
+
+        .scale-status.orange {
+            color: #ff9800;
+        }
+
+        .scale-status.red {
+            color: var(--accent-red);
+        }
 
         /* Slide 5 - Pipeline node diagram - Increased size for better vertical fit */
         .pipeline-diagram {
@@ -532,7 +553,7 @@
             justify-content: center;
             position: relative;
             z-index: 2;
-            box-shadow: 0 5px 15px rgba(74,66,56,0.08);
+            box-shadow: 0 5px 15px rgba(74, 66, 56, 0.08);
             text-align: center;
             padding: 0.5rem;
             transition: all 0.3s ease;
@@ -579,7 +600,7 @@
             display: flex;
             flex-direction: column;
             gap: 1.25rem;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.05);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
         }
 
         .dashboard-header-mock {
@@ -648,10 +669,9 @@
 
         .dashboard-sandbox-waveform {
             height: 40px;
-            background: repeating-linear-gradient(90deg, 
-                var(--border-sepia) 0px, var(--border-sepia) 2px, 
-                transparent 2px, transparent 8px
-            );
+            background: repeating-linear-gradient(90deg,
+                    var(--border-sepia) 0px, var(--border-sepia) 2px,
+                    transparent 2px, transparent 8px);
             margin-bottom: 0.75rem;
             opacity: 0.7;
         }
@@ -681,8 +701,13 @@
             position: relative;
         }
 
-        .chart-bar.red { background-color: var(--accent-red); }
-        .chart-bar.green { background-color: var(--accent-green); }
+        .chart-bar.red {
+            background-color: var(--accent-red);
+        }
+
+        .chart-bar.green {
+            background-color: var(--accent-green);
+        }
 
         .chart-val-label {
             position: absolute;
@@ -706,7 +731,8 @@
         .rag-container {
             display: flex;
             flex-direction: column;
-            gap: 2rem; /* increased gap to utilize vertical space */
+            gap: 2rem;
+            /* increased gap to utilize vertical space */
             flex: 1;
             justify-content: center;
         }
@@ -740,7 +766,7 @@
             border: 1px solid var(--border-sepia);
             border-radius: 8px;
             padding: 1.25rem 1.5rem;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
             font-size: 1.25rem;
         }
 
@@ -767,7 +793,8 @@
             background-color: var(--accent-terracotta);
             color: white;
             border-radius: 12px;
-            padding: 3rem 2rem; /* increased padding for layout weight */
+            padding: 3rem 2rem;
+            /* increased padding for layout weight */
             text-align: center;
             box-shadow: 0 10px 25px rgba(139, 69, 19, 0.3);
             border: 2px solid var(--bg-card);
@@ -788,10 +815,12 @@
             opacity: 0.9;
         }
 
-        .ecosystem-spokes-left, .ecosystem-spokes-right {
+        .ecosystem-spokes-left,
+        .ecosystem-spokes-right {
             display: flex;
             flex-direction: column;
-            gap: 2.5rem; /* increased gap to spread spokes vertically */
+            gap: 2.5rem;
+            /* increased gap to spread spokes vertically */
         }
 
         .ecosystem-spoke-card {
@@ -799,7 +828,7 @@
             border: 2px solid var(--border-sepia);
             border-radius: 8px;
             padding: 1.25rem 1.5rem;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.03);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
             position: relative;
         }
 
@@ -818,31 +847,43 @@
             color: var(--text-primary);
         }
 
-        .ecosystem-spokes-left .ecosystem-spoke-card::after { right: -18px; }
-        .ecosystem-spokes-right .ecosystem-spoke-card::after { left: -18px; }
+        .ecosystem-spokes-left .ecosystem-spoke-card::after {
+            right: -18px;
+        }
+
+        .ecosystem-spokes-right .ecosystem-spoke-card::after {
+            left: -18px;
+        }
     </style>
 </head>
+
 <body>
     <div id="left-pane">
         <div id="slide-canvas">
             <div class="slide-pattern-top"></div>
             <div class="slide-border"></div>
             <div class="slide-container">
-                
-                    <div style="display: flex; flex-direction: column; justify-content: center; height: 100%; padding-left: 50px;">
-                        <h3 class="slide-tag">Team Classmates</h3>
-                        <h1 class="slide-title-text" style="font-size: 9.5rem;">BOSESPH TOOLKIT</h1>
-                        <h2 class="slide-subtitle-text" style="font-size: 3.5rem;">THE OPEN PIPELINE FOR PHILIPPINE-LANGUAGE SPEECH</h2>
-                        
-                        <div style="margin-top: 4rem; display: flex; gap: 4rem; align-items: center;">
-                            <div>
-                                <div style="font-family: var(--font-display); font-size: 2.2rem; color: var(--accent-terracotta);">Open Source. Reproducible. Ready to Extend.</div>
-                                <div style="font-family: var(--font-mono); font-size: 1.5rem; color: var(--text-heading); margin-top: 0.5rem;">github.com/Classmates/bosesph-toolkit</div>
-                            </div>
+
+                <div
+                    style="display: flex; flex-direction: column; justify-content: center; height: 100%; padding-left: 50px;">
+                    <h3 class="slide-tag">Classmates</h3>
+                    <h1 class="slide-title-text" style="font-size: 9.5rem;">BosesPH Toolkit</h1>
+                    <h2 class="slide-subtitle-text" style="font-size: 3.5rem;">Less miscommunication, more boses, for
+                        every-juan</h2>
+
+                    <div style="margin-top: 4rem; display: flex; gap: 4rem; align-items: center;">
+                        <div>
+                            <div
+                                style="font-family: var(--font-display); font-size: 2.2rem; color: var(--accent-terracotta);">
+                                Open Source. Reproducible. Extendible.</div>
+                            <div
+                                style="font-family: var(--font-mono); font-size: 1.5rem; color: var(--text-heading); margin-top: 0.5rem;">
+                                github.com/klydddd/asteria-classmates</div>
                         </div>
-                        <div class="title-sketch"></div>
                     </div>
-            
+                    <div class="title-sketch"></div>
+                </div>
+
             </div>
             <div class="slide-pattern-bottom"></div>
         </div>
@@ -855,17 +896,21 @@
     <div id="right-pane">
         <h2>Presenter Script</h2>
         <div class="script-meta">Slide 12 of 12 &bull; The Vision / Ask</div>
-        
+
         <div id="script-content">
-            
-                <p><strong>[High Energy Closing]</strong></p>
-                <p>"In summary, the BosesPH Toolkit is the open pipeline for Philippine-language speech. It is open source, fully reproducible, and ready to extend. Help us bring the voice of every Filipino into the future of voice technology. Thank you very much, and we welcome your questions."</p>
-            
+
+            <p><strong>[High Energy Closing]</strong></p>
+            <p>"In summary, the BosesPH Toolkit is the open pipeline for Philippine-language speech. It is open source,
+                fully reproducible, and ready to extend. Help us bring the voice of every Filipino into the future of
+                voice technology. Thank you very much, and we welcome your questions."</p>
+
         </div>
 
         <div class="script-section-header">Codebase References</div>
         <div style="margin-bottom: 2rem;">
-            <a href="../pyproject.toml" class="ref-link">📁 <strong>pyproject.toml</strong> &bull; <span style="color:#eae5d9; opacity:0.85;">Standard open-source packages config details for local and remote installations.</span></a>
+            <a href="../pyproject.toml" class="ref-link">📁 <strong>pyproject.toml</strong> &bull; <span
+                    style="color:#eae5d9; opacity:0.85;">Standard open-source packages config details for local and
+                    remote installations.</span></a>
         </div>
 
         <div class="nav-controls">
@@ -879,19 +924,19 @@
         function resizeSlides() {
             const canvas = document.getElementById('slide-canvas');
             const wrapper = document.getElementById('left-pane');
-            
+
             if (!canvas || !wrapper) return;
-            
+
             const targetWidth = 1920;
             const targetHeight = 1080;
-            
+
             const containerWidth = wrapper.clientWidth;
             const containerHeight = wrapper.clientHeight;
-            
+
             const scaleX = containerWidth / targetWidth;
             const scaleY = containerHeight / targetHeight;
             const scale = Math.min(scaleX, scaleY) * 0.94;
-            
+
             canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
         }
 
@@ -911,7 +956,7 @@
 
         // Keyboard navigation
         window.addEventListener('keydown', (e) => {
-            switch(e.key) {
+            switch (e.key) {
                 case 'ArrowRight':
                 case 'Space':
                 case ' ':
@@ -933,4 +978,5 @@
         });
     </script>
 </body>
+
 </html>
