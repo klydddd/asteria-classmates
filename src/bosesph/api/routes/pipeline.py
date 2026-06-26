@@ -84,7 +84,7 @@ def upload_audio(
         with target.open("wb") as fp:
             while chunk := upload.file.read(1024 * 256):
                 fp.write(chunk)
-        saved.append(str(target.relative_to(_workspace(request).resolve())))
+        saved.append(target.relative_to(_workspace(request).resolve()).as_posix())
     return UploadResult(saved_files=saved, count=len(saved))
 
 

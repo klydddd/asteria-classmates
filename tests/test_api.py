@@ -1056,7 +1056,7 @@ def test_train_job_uses_lazy_finetune_service(
     assert submitted.status_code == 202
     assert job["status"] == "succeeded"
     assert job["progress"] == "starting"
-    assert job["result"]["model_path"].endswith("model/test/model")
+    assert Path(job["result"]["model_path"]).as_posix().endswith("model/test/model")
 
 
 @pytest.mark.parametrize(

@@ -1,0 +1,293 @@
+Metadata-Version: 2.4
+Name: bosesph-toolkit
+Version: 0.1.0
+Summary: CLI-first tools for building Philippine-language speech datasets.
+License-Expression: Apache-2.0
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pydantic<3,>=2.7
+Provides-Extra: asr
+Requires-Dist: transformers<5,>=4.40; extra == "asr"
+Requires-Dist: torch>=2.2; extra == "asr"
+Requires-Dist: numpy>=1.24; extra == "asr"
+Requires-Dist: jiwer<4,>=3.0; extra == "asr"
+Provides-Extra: train
+Requires-Dist: bosesph-toolkit[asr]; extra == "train"
+Requires-Dist: accelerate>=0.26; extra == "train"
+Requires-Dist: peft>=0.10; extra == "train"
+Provides-Extra: api
+Requires-Dist: fastapi<1,>=0.110; extra == "api"
+Requires-Dist: httpx2<3,>=2; extra == "api"
+Requires-Dist: pydantic-settings<3,>=2.2; extra == "api"
+Requires-Dist: uvicorn[standard]>=0.29; extra == "api"
+Requires-Dist: python-multipart>=0.0.9; extra == "api"
+Provides-Extra: dev
+Requires-Dist: black<26,>=24.4; extra == "dev"
+Requires-Dist: pytest<9,>=8.2; extra == "dev"
+Requires-Dist: ruff<1,>=0.5; extra == "dev"
+Dynamic: license-file
+
+# BosesPH Toolkit
+
+BosesPH Toolkit is a CLI-first, open-source pipeline for turning raw
+Philippine-language speech recordings and transcripts into reusable datasets,
+ASR benchmarks, and optional fine-tuned speech-recognition models.
+
+The MVP focuses on Kapampangan while keeping the workflow reusable for other
+Philippine languages. It is a dataset and model-development toolkit—not only a
+transcription application.
+
+## What the Toolkit Will Do
+
+The complete workflow is designed to take a project from raw recordings to a
+documented release package:
+
+```text
+Raw audio + transcripts + metadata
+                 |
+                 v
+        Import and validation
+                 |
+                 v
+ Audio standardization and transcript normalization
+                 |
+                 v
+       Human review and approval
+                 |
+                 v
+ Clean dataset + train/validation/test splits
+                 |
+                 v
+   Baseline ASR transcription and WER/CER evaluation
+                 |
+                 v
+        Optional ASR fine-tuning
+                 |
+                 v
+ Dataset, benchmark, model, and documentation package
+```
+
+In practice, the pipeline will:
+
+1. Import recordings, transcripts, and available speaker or language metadata.
+2. Match each recording to its transcript and report missing or invalid inputs.
+3. Validate audio structure, duration, sample rate, channels, silence, and
+   readability without stopping the entire batch when one clip fails.
+4. Standardize usable audio to mono, 16 kHz, signed 16-bit PCM WAV and assign
+   deterministic language-prefixed IDs.
+5. Normalize transcript formatting and route questionable clips for human
+   review.
+6. Export approved clips as a clean dataset with speaker-aware
+   train/validation/test splits and summary statistics.
+7. Run a pretrained multilingual ASR model against the test split.
+8. Calculate word error rate (WER) and character error rate (CER), then produce
+   a benchmark report with representative errors and limitations.
+9. Optionally fine-tune a small ASR model and compare it with the baseline.
+10. Package the dataset, benchmark results, model artifacts, dataset card, and
+    model card so another developer can reproduce or extend the work.
+
+The command line remains the primary interface. The FastAPI backend reuses the
+same Python services for notebooks and the planned dashboard.
+
+## Current Status
+
+Phases 1 through 7 are implemented for the selected PLD Kapampangan session
+workflow:
+
+- Metadata schema and transcription guidance are documented.
+- `PLD/PAM/0400` can be imported as one local recording session.
+- Session logs and transcript rows are parsed and matched to PCM WAV files.
+- Audio is checked for corruption, emptiness, silence, quiet levels, duration,
+  sample rate, channel count, and sample width.
+- Readable audio is standardized to mono, 16 kHz, signed 16-bit PCM WAV.
+- Output names are assigned deterministically as `pam_000001.wav`,
+  `pam_000002.wav`, and so on.
+- Clip-level outcomes are recorded without aborting the complete import.
+- Transcripts are normalized conservatively with a JSON before/after audit.
+- Pending and needs-review clips can be approved, marked for fixes, rejected,
+  skipped, or reviewed later through a resumable terminal workflow.
+- Approved clips can be packaged into speaker-aware dataset splits.
+- Baseline ASR, WER/CER evaluation, benchmark reports, fine-tuning, and model
+  comparison are available through the CLI.
+- The FastAPI backend exposes the pipeline and runs heavy operations as
+  in-process background jobs.
+
+The demo dashboard and open-source release packaging remain planned.
+
+## Current CLI Usage
+
+Python 3.10 or newer is required.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[api,dev]"
+```
+
+Run the API:
+
+```bash
+bosesph-api
+```
+
+The default workspace is `outputs/`, the default address is
+`http://0.0.0.0:8000`, and OpenAPI documentation is available at `/docs`.
+Override settings with `BOSESPH_WORKSPACE`, `BOSESPH_HOST`, `BOSESPH_PORT`, and
+`BOSESPH_MAX_WORKERS`.
+
+Validate metadata or regenerate the checked-in JSON schema:
+
+```bash
+bosesph validate-metadata sample_data/metadata_template.csv
+bosesph validate-metadata metadata.csv --format json
+bosesph export-metadata-schema --output docs/metadata.schema.json
+```
+
+Import a PLD recording session:
+
+```bash
+bosesph import-pld PLD/PAM/0400 --output outputs/dataset
+```
+
+Use `--overwrite` to replace an existing generated directory:
+
+```bash
+bosesph import-pld PLD/PAM/0400 \
+  --output outputs/dataset \
+  --overwrite
+```
+
+The importer currently produces:
+
+```text
+outputs/dataset/
+  audio_clean/           # standardized pam_*.wav files
+  metadata.csv           # pending and needs-review clips
+  ingestion_report.json  # accepted, review, and rejected outcomes
+```
+
+Non-quiet clips between 5 and 15 seconds are marked `pending`. Other readable
+clips are retained as `needs_review`. Corrupt, empty, silent, or unmatched
+inputs are reported as `rejected`.
+
+Normalize the imported transcripts:
+
+```bash
+bosesph normalize-transcripts outputs/dataset
+```
+
+This updates `metadata.csv` and writes `normalization_report.json` with each
+row's original text, normalized text, applied rules, and unresolved warnings.
+Exit code `1` means normalization completed but one or more transcripts still
+need human review. Exit code `2` means the input was invalid or unreadable.
+
+Review pending clips interactively:
+
+```bash
+bosesph review outputs/dataset
+```
+
+The command prints each audio path for playback in an external audio player,
+then shows the transcript, language, speaker metadata, existing notes, and
+review checklist. Actions are approve (`a`), needs fix (`f`), reject (`r`),
+skip (`s`), and quit (`q`). Needs-fix and rejection decisions require a note.
+Each decision is saved immediately, so a later run resumes with unfinished
+clips. Phase 4 will include only rows marked `approved`.
+
+## Planned CLI Workflow
+
+The target end-to-end interface is:
+
+```bash
+bosesph init kapampangan-asr
+bosesph validate data/raw --transcripts data/transcripts.csv
+bosesph clean data/raw --language kapampangan
+bosesph split outputs/dataset --train 0.70 --val 0.15 --test 0.15
+bosesph transcribe sample.wav --model openai/whisper-small
+bosesph evaluate \
+  --predictions outputs/benchmark/predictions.csv \
+  --references outputs/dataset/test.csv
+bosesph train \
+  --base-model openai/whisper-small \
+  --dataset outputs/dataset
+bosesph package --output release
+```
+
+These commands describe the intended product flow and are not all implemented
+yet. The existing commands are listed in [Current CLI Usage](#current-cli-usage).
+
+## Target Output
+
+When the complete workflow is implemented, a run will produce:
+
+```text
+outputs/
+  dataset/
+    audio/
+    metadata.csv
+    train.csv
+    validation.csv
+    test.csv
+    statistics.json
+    dataset_card.md
+  benchmark/
+    baseline_predictions.csv
+    fine_tuned_predictions.csv
+    results.json
+    report.md
+  model/
+    bosesph-kapampangan-v1/
+      model files
+      model_card.md
+```
+
+## Repository Structure
+
+- `src/bosesph/` — reusable pipeline services, schemas, and CLI commands.
+- `ml/data/` — dataset preparation and transcript normalization.
+- `ml/evaluation/` — WER, CER, prediction, and benchmark utilities.
+- `ml/training/` — optional ASR fine-tuning workflows.
+- `apps/api/` — optional FastAPI wrapper around the core services.
+- `apps/web/` — optional Next.js dashboard.
+- `docs/` — architecture, dataset format, and transcription guidance.
+- `sample_data/` — small, redistributable fixtures and templates.
+- `scripts/` — repeatable setup, conversion, and export utilities.
+- `outputs/` — generated datasets, reports, and model artifacts; do not commit
+  its contents.
+
+## Development
+
+Run the current verification suite with:
+
+```bash
+ruff check .
+black --check .
+pytest
+```
+
+Behavior changes should include deterministic tests. Use synthetic or
+explicitly consented audio fixtures and mock external model or storage calls.
+
+## Project Documents
+
+- [Requirements](Requirements.md) — product behavior, architecture, and
+  recommended technology.
+- [Tasks](Tasks.md) — phased build plan and implementation status.
+- [Contributor Guide](AGENTS.md) — repository and development conventions.
+- [Dataset Format](docs/dataset_format.md) — metadata fields and validation
+  rules.
+- [Transcription Guidelines](docs/transcription_guidelines.md) — Kapampangan
+  transcription and review policy.
+
+## Data Responsibility
+
+Do not commit private recordings, personally identifying speaker metadata,
+secrets, generated datasets, model weights, or unlicensed material. Only small,
+redistributable, or explicitly consented fixtures belong in `sample_data/`.
+Every released dataset should document its source, consent, license, intended
+use, and known limitations.
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE).
