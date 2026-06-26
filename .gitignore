@@ -46,6 +46,13 @@ sample_data/*
 *.pth
 *.safetensors
 
+# Build artifacts
+*.egg-info/
+
+# Test pipeline scratch directories
+test-pipeline/
+test-piepline/
+
 # Incomplete downloads
 *.crdownload
 *.part

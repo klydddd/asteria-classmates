@@ -187,6 +187,7 @@ def transcribe_split(
     language: str | None = None,
     output_path: str | Path,
     progress_fn: Callable[[int, int], None] | None = None,
+    limit: int | None = None,
 ) -> list[TranscriptionResult]:
     """Transcribe every clip in a split CSV and write predictions.csv.
 
@@ -206,6 +207,9 @@ def transcribe_split(
 
     if not rows:
         raise ASRError(f"split CSV is empty: {csv_path}")
+
+    if limit is not None and limit > 0:
+        rows = rows[:limit]
 
     results: list[TranscriptionResult] = []
     total = len(rows)
