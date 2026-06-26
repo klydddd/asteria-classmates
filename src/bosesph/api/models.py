@@ -180,6 +180,17 @@ class DemoOptions(BaseModel):
     default_model_id: str
 
 
+class DemoTranscriptionResult(BaseModel):
+    """Result produced by a direct single-audio transcription job."""
+
+    prediction: str
+    model_id: str
+    model_label: str
+    language_id: str
+    wer: float | None = None
+    cer: float | None = None
+
+
 class UploadResult(BaseModel):
     """Response for ``POST /upload-audio``."""
 

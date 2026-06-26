@@ -636,6 +636,313 @@ def test_select_demo_model_rejects_invalid_choices(
         demo_api.select_demo_model(options, model_id, language_id)
 
 
+def test_demo_transcribe_scores_reference_and_deletes_upload(
+    client: tuple[TestClient, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    test_client, workspace = client
+    wav_path = tmp_path / "clip.wav"
+    write_pcm_wav(wav_path, duration=0.1)
+    loaded_models: list[str] = []
+    seen_paths: list[Path] = []
+
+    def fake_load_model(model: str) -> object:
+        loaded_models.append(model)
+        return object()
+
+    def fake_transcribe(
+        pipe: object,
+        audio_path: Path,
+        *,
+        language: str | None,
+    ) -> str:
+        seen_paths.append(audio_path)
+        assert audio_path.is_file()
+        assert language is None
+        return "Masanting ya ing aldo"
+
+    monkeypatch.setattr("bosesph.asr.load_model", fake_load_model)
+    monkeypatch.setattr("bosesph.asr.transcribe_file", fake_transcribe)
+
+    response = test_client.post(
+        "/demo/transcribe",
+        data={
+            "model_id": "baseline",
+            "language_id": "kapampangan",
+            "reference": "Masanting ya ing aldo.",
+        },
+        files={"audio": ("../private.wav", wav_path.read_bytes(), "audio/wav")},
+    )
+    job = poll_job(test_client, response.json()["id"])
+
+    assert response.status_code == 202
+    assert job["status"] == "succeeded"
+    assert job["progress"] == "transcribing"
+    assert job["result"] == {
+        "prediction": "Masanting ya ing aldo",
+        "model_id": "baseline",
+        "model_label": "Whisper Small (baseline)",
+        "language_id": "kapampangan",
+        "wer": 0.0,
+        "cer": 0.0,
+    }
+    assert loaded_models == ["openai/whisper-small"]
+    assert seen_paths
+    assert seen_paths[0].name == "audio.wav"
+    assert not seen_paths[0].parent.exists()
+    assert not (workspace / ".demo_uploads").exists()
+
+
+@pytest.mark.parametrize("reference", [None, "", "   "])
+def test_demo_transcribe_without_reference_returns_null_metrics(
+    client: tuple[TestClient, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reference: str | None,
+) -> None:
+    test_client, workspace = client
+    wav_path = tmp_path / "clip.wav"
+    write_pcm_wav(wav_path, duration=0.1)
+    monkeypatch.setattr("bosesph.asr.load_model", lambda model: object())
+    monkeypatch.setattr(
+        "bosesph.asr.transcribe_file",
+        lambda pipe, audio_path, *, language: "Mayap a abak",
+    )
+    data = {"model_id": "baseline", "language_id": "auto"}
+    if reference is not None:
+        data["reference"] = reference
+
+    response = test_client.post(
+        "/demo/transcribe",
+        data=data,
+        files={"audio": ("clip.wav", wav_path.read_bytes(), "audio/wav")},
+    )
+    job = poll_job(test_client, response.json()["id"])
+
+    assert response.status_code == 202
+    assert job["status"] == "succeeded"
+    assert job["result"]["wer"] is None
+    assert job["result"]["cer"] is None
+    assert not (workspace / ".demo_uploads").exists()
+
+
+def test_demo_transcribe_deletes_upload_after_failure(
+    client: tuple[TestClient, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    test_client, workspace = client
+    wav_path = tmp_path / "clip.wav"
+    write_pcm_wav(wav_path, duration=0.1)
+
+    monkeypatch.setattr("bosesph.asr.load_model", lambda model: object())
+
+    def fail_transcription(*args: object, **kwargs: object) -> str:
+        raise RuntimeError("inference failed")
+
+    monkeypatch.setattr("bosesph.asr.transcribe_file", fail_transcription)
+
+    response = test_client.post(
+        "/demo/transcribe",
+        data={"model_id": "baseline", "language_id": "auto"},
+        files={"audio": ("clip.wav", wav_path.read_bytes(), "audio/wav")},
+    )
+    job = poll_job(test_client, response.json()["id"])
+
+    assert response.status_code == 202
+    assert job["status"] == "failed"
+    assert job["error"] == "inference failed"
+    assert not (workspace / ".demo_uploads").exists()
+
+
+@pytest.mark.parametrize(
+    ("data", "filename", "content", "expected"),
+    [
+        (
+            {"model_id": "unknown", "language_id": "auto"},
+            "clip.wav",
+            b"RIFF",
+            "Unknown demo model",
+        ),
+        (
+            {"model_id": "baseline", "language_id": "unknown"},
+            "clip.wav",
+            b"RIFF",
+            "Unknown demo language",
+        ),
+        (
+            {"model_id": "finetuned", "language_id": "auto"},
+            "clip.wav",
+            b"RIFF",
+            "No local fine-tuned model found",
+        ),
+        (
+            {"model_id": "baseline", "language_id": "auto"},
+            "clip.mp3",
+            b"audio",
+            "Only PCM WAV uploads are supported",
+        ),
+        (
+            {"model_id": "baseline", "language_id": "auto"},
+            "clip.wav",
+            b"",
+            "Uploaded audio is empty",
+        ),
+    ],
+)
+def test_demo_transcribe_rejects_invalid_input_before_job_submission(
+    client: tuple[TestClient, Path],
+    data: dict[str, str],
+    filename: str,
+    content: bytes,
+    expected: str,
+) -> None:
+    test_client, workspace = client
+
+    response = test_client.post(
+        "/demo/transcribe",
+        data=data,
+        files={"audio": (filename, content, "audio/wav")},
+    )
+
+    assert response.status_code == 422
+    assert expected in response.json()["detail"]
+    assert test_client.get("/jobs").json() == []
+    assert not (workspace / ".demo_uploads").exists()
+
+
+def test_demo_transcribe_rejects_multiple_audio_files(
+    client: tuple[TestClient, Path],
+) -> None:
+    test_client, workspace = client
+
+    response = test_client.post(
+        "/demo/transcribe",
+        data={"model_id": "baseline", "language_id": "auto"},
+        files=[
+            ("audio", ("first.wav", b"RIFF-first", "audio/wav")),
+            ("audio", ("second.wav", b"RIFF-second", "audio/wav")),
+        ],
+    )
+
+    assert response.status_code == 422
+    assert "Exactly one audio upload is required" in response.json()["detail"]
+    assert test_client.get("/jobs").json() == []
+    assert not (workspace / ".demo_uploads").exists()
+
+
+def test_demo_transcribe_rejects_symlinked_upload_root(
+    client: tuple[TestClient, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    test_client, workspace = client
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    workspace.mkdir()
+    (workspace / ".demo_uploads").symlink_to(outside, target_is_directory=True)
+    monkeypatch.setattr("bosesph.asr.load_model", lambda model: object())
+    monkeypatch.setattr(
+        "bosesph.asr.transcribe_file",
+        lambda pipe, audio_path, *, language: "Masanting",
+    )
+
+    response = test_client.post(
+        "/demo/transcribe",
+        data={"model_id": "baseline", "language_id": "auto"},
+        files={"audio": ("clip.wav", b"RIFF", "audio/wav")},
+    )
+
+    assert response.status_code == 422
+    assert "Demo upload root escapes workspace" in response.json()["detail"]
+    assert test_client.get("/jobs").json() == []
+    assert list(outside.iterdir()) == []
+
+
+def test_demo_transcribe_resolves_finetuned_model_and_decoding_language(
+    client: tuple[TestClient, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    test_client, workspace = client
+    model_dir = workspace / "model" / "local"
+    saved_model = model_dir / "model"
+    saved_model.mkdir(parents=True)
+    (saved_model / "config.json").write_text("{}", encoding="utf-8")
+    (model_dir / "model_card.md").write_text("# Model", encoding="utf-8")
+    (model_dir / "training_config.json").write_text(
+        json.dumps({"language": "ceb"}),
+        encoding="utf-8",
+    )
+    wav_path = tmp_path / "clip.wav"
+    write_pcm_wav(wav_path, duration=0.1)
+    loaded_models: list[str] = []
+    decoding_languages: list[str | None] = []
+
+    def fake_load_model(model: str) -> object:
+        loaded_models.append(model)
+        return object()
+
+    def fake_transcribe(
+        pipe: object,
+        audio_path: Path,
+        *,
+        language: str | None,
+    ) -> str:
+        decoding_languages.append(language)
+        return "Masanting"
+
+    monkeypatch.setattr("bosesph.asr.load_model", fake_load_model)
+    monkeypatch.setattr("bosesph.asr.transcribe_file", fake_transcribe)
+
+    response = test_client.post(
+        "/demo/transcribe",
+        data={"model_id": "finetuned", "language_id": "kapampangan"},
+        files={"audio": ("clip.wav", wav_path.read_bytes(), "audio/wav")},
+    )
+    job = poll_job(test_client, response.json()["id"])
+
+    assert response.status_code == 202
+    assert job["status"] == "succeeded"
+    assert loaded_models == [str(saved_model.resolve())]
+    assert decoding_languages == ["ceb"]
+    assert not (workspace / ".demo_uploads").exists()
+
+
+def test_demo_transcribe_cleanup_failure_preserves_result(
+    client: tuple[TestClient, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    test_client, _ = client
+    wav_path = tmp_path / "clip.wav"
+    write_pcm_wav(wav_path, duration=0.1)
+    monkeypatch.setattr("bosesph.asr.load_model", lambda model: object())
+    monkeypatch.setattr(
+        "bosesph.asr.transcribe_file",
+        lambda pipe, audio_path, *, language: "Masanting",
+    )
+
+    def fail_cleanup(path: Path) -> None:
+        raise OSError("cleanup denied")
+
+    monkeypatch.setattr("bosesph.api.demo.shutil.rmtree", fail_cleanup)
+
+    response = test_client.post(
+        "/demo/transcribe",
+        data={"model_id": "baseline", "language_id": "auto"},
+        files={"audio": ("clip.wav", wav_path.read_bytes(), "audio/wav")},
+    )
+    job = poll_job(test_client, response.json()["id"])
+
+    assert response.status_code == 202
+    assert job["status"] == "succeeded"
+    assert job["result"]["prediction"] == "Masanting"
+    assert "Failed to remove demo upload directory" in caplog.text
+
+
 def test_transcribe_job_uses_lazy_asr_services(
     client: tuple[TestClient, Path],
     monkeypatch: pytest.MonkeyPatch,
