@@ -1,0 +1,3 @@
+[console_scripts]
+bosesph = bosesph.cli:entrypoint
+bosesph-api = bosesph.api.server:run

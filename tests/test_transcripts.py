@@ -153,7 +153,7 @@ def test_normalize_dataset_does_not_duplicate_warning_notes_on_rerun(
     normalize_dataset(dataset)
 
     row = read_metadata(dataset / "metadata.csv")[0]
-    payload = json.loads((dataset / "normalization_report.json").read_text())
+    payload = json.loads((dataset / "normalization_report.json").read_text(encoding="utf-8"))
     assert row["reviewer_notes"].count("Transcript contains unusual") == 1
     assert payload["records"][0]["before"] == first.records[0].before
     assert payload["records"][0]["applied_rules"] == first.records[0].applied_rules

@@ -47,9 +47,6 @@ def resolve_path(workspace: Path, relative: str) -> Path:
         )
     resolved = (workspace / relative).resolve()
     workspace_resolved = workspace.resolve()
-    if (
-        not str(resolved).startswith(str(workspace_resolved) + "/")
-        and resolved != workspace_resolved
-    ):
+    if not resolved.is_relative_to(workspace_resolved):
         raise PathTraversalError(f"Resolved path escapes workspace root: {relative!r}")
     return resolved
