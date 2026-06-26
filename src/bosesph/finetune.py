@@ -31,7 +31,7 @@ class FineTuneConfig(BaseModel):
     """Training configuration persisted as ``training_config.json``."""
 
     base_model: str
-    language: str
+    language: str | None
     epochs: int
     max_steps: int | None
     batch_size: int
@@ -39,8 +39,8 @@ class FineTuneConfig(BaseModel):
     train_clips: int
     val_clips: int
     use_lora: bool = False
-    lora_r: int = 16
-    lora_alpha: int = 32
+    lora_r: int = 32
+    lora_alpha: int = 64
     lora_dropout: float = 0.05
 
 
@@ -49,7 +49,7 @@ class FineTuneReport(BaseModel):
 
     output_dir: str
     base_model: str
-    language: str
+    language: str | None
     train_clips: int
     val_clips: int
     steps: int
@@ -284,6 +284,21 @@ def _generate_model_card(
     else:
         method = "Full fine-tuning"
 
+    lang_display = config.language if config.language is not None else "unconstrained"
+    if config.language is None:
+        lang_limitation = (
+            "Kapampangan is not a natively supported Whisper language. "
+            "This model decodes without a forced language token (unconstrained), "
+            "which avoids language-specific tokenisation artefacts but may "
+            "produce output in another language on ambiguous audio."
+        )
+    else:
+        lang_limitation = (
+            f"Kapampangan is not a natively supported Whisper language. This model "
+            f"uses the `{config.language}` language token as a proxy, "
+            f"which may introduce tokenisation artefacts."
+        )
+
     return textwrap.dedent(
         f"""\
         # BosesPH Fine-Tuned ASR Model
@@ -298,7 +313,7 @@ def _generate_model_card(
         | Field | Value |
         |---|---|
         | Base model | {config.base_model} |
-        | Language token | {config.language} (proxy for Kapampangan) |
+        | Language token | {lang_display} |
         | Training clips | {config.train_clips} |
         | Validation clips | {config.val_clips} |
         | Epochs | {config.epochs} |
@@ -322,9 +337,7 @@ def _generate_model_card(
 
         ## Limitations
 
-        - Kapampangan is not a natively supported Whisper language. This model
-          uses the Tagalog (`{config.language}`) language token as a proxy,
-          which may introduce tokenization artefacts.
+        - {lang_limitation}
         - Training data comes from a single PLD recording session with limited
           speaker diversity. Real-world performance may vary.
         - The model inherits all base-Whisper limitations (hallucinations on
@@ -351,8 +364,8 @@ def finetune_model(
     dataset_dir: str | Path,
     output_dir: str | Path,
     *,
-    base_model: str = "openai/whisper-tiny",
-    language: str = "tl",
+    base_model: str = "openai/whisper-small",
+    language: str | None = None,
     epochs: int = 3,
     max_steps: int | None = None,
     batch_size: int = 8,
@@ -363,8 +376,8 @@ def finetune_model(
     optim: str = "adamw_torch",
     fp16: bool = False,
     use_lora: bool = True,
-    lora_r: int = 16,
-    lora_alpha: int = 32,
+    lora_r: int = 32,
+    lora_alpha: int = 64,
     lora_dropout: float = 0.05,
     progress_fn: Callable[[str], None] | None = None,
 ) -> FineTuneReport:

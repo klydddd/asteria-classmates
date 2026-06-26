@@ -161,8 +161,8 @@ class TestFineTuneConfig:
 
     def test_lora_defaults_when_omitted(self) -> None:
         config = FineTuneConfig(
-            base_model="openai/whisper-tiny",
-            language="tl",
+            base_model="openai/whisper-small",
+            language=None,
             epochs=3,
             max_steps=None,
             batch_size=8,
@@ -171,7 +171,36 @@ class TestFineTuneConfig:
             val_clips=0,
         )
         assert config.use_lora is False
-        assert config.lora_r == 16
+        assert config.lora_r == 32  # updated from 16
+        assert config.lora_alpha == 64  # updated from 32
+
+    def test_config_language_none_roundtrip(self) -> None:
+        config = FineTuneConfig(
+            base_model="openai/whisper-small",
+            language=None,
+            epochs=3,
+            max_steps=None,
+            batch_size=8,
+            learning_rate=1e-5,
+            train_clips=100,
+            val_clips=15,
+        )
+        restored = FineTuneConfig.model_validate_json(config.model_dump_json())
+        assert restored.language is None
+
+    def test_config_lora_new_defaults(self) -> None:
+        config = FineTuneConfig(
+            base_model="openai/whisper-small",
+            language=None,
+            epochs=3,
+            max_steps=None,
+            batch_size=8,
+            learning_rate=1e-5,
+            train_clips=100,
+            val_clips=0,
+        )
+        assert config.lora_r == 32
+        assert config.lora_alpha == 64
 
 
 class TestFineTuneReport:
@@ -400,6 +429,35 @@ class TestGenerateModelCard:
         assert "from transformers import pipeline" in card
         assert 'task="transcribe"' not in card or "automatic-speech-recognition" in card
 
+    def test_model_card_none_language_uses_unconstrained(self) -> None:
+        config = FineTuneConfig(
+            base_model="openai/whisper-small",
+            language=None,
+            epochs=3,
+            max_steps=None,
+            batch_size=8,
+            learning_rate=1e-5,
+            train_clips=100,
+            val_clips=15,
+        )
+        card = _generate_model_card(config)
+        assert "unconstrained" in card
+        assert "Tagalog" not in card
+
+    def test_model_card_explicit_language_shows_token(self) -> None:
+        config = FineTuneConfig(
+            base_model="openai/whisper-small",
+            language="tl",
+            epochs=3,
+            max_steps=None,
+            batch_size=8,
+            learning_rate=1e-5,
+            train_clips=100,
+            val_clips=15,
+        )
+        card = _generate_model_card(config)
+        assert "`tl`" in card
+
 
 # -----------------------------------------------------------------------
 # generate_comparison_report
@@ -583,6 +641,17 @@ class TestFinetuneCLI:
             ["finetune", "/tmp/ds", "--output", "/tmp/out", "--full"]
         )
         assert args.use_lora is False
+
+    def test_finetune_parser_new_defaults(self) -> None:
+        from bosesph.cli import build_parser
+
+        args = build_parser().parse_args(
+            ["finetune", "/tmp/ds", "--output", "/tmp/out"]
+        )
+        assert args.base_model == "openai/whisper-small"
+        assert args.language is None
+        assert args.lora_r == 32
+        assert args.lora_alpha == 64
 
 
 # -----------------------------------------------------------------------
