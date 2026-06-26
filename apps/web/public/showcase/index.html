@@ -7,21 +7,46 @@
   <title>BosesPH Toolkit Showcase</title>
   <meta name="description"
     content="Static showcase of the BosesPH Toolkit pipeline for Philippine-language speech datasets, benchmarks, and fine-tuned ASR models." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
   <style>
     :root {
       --surface: #fffdf7;
-      --background: #f4f1e8;
-      --foreground: #17231b;
-      --accent: #b33a2b;
-      --accent-soft: #f3ded8;
-      --border: #d7d0c0;
-      --muted: #e8e4d8;
-      --muted-foreground: #6b5f52;
-      --code: #211d19;
-      --code-foreground: #fffdf7;
+      --background: #faf6ee;
+      --foreground: #1a1a2e;
+      --primary: #0038a8;
+      --primary-soft: #e8effa;
+      --accent: #ce1126;
+      --accent-soft: #fce8ea;
+      --gold: #fcd116;
+      --gold-deep: #d4a017;
+      --gold-soft: #fef9e1;
+      --border: #d4cfc2;
+      --muted: #eae5d8;
+      --muted-foreground: #5c5647;
+      --code-bg: #1a1a2e;
+      --code-foreground: #e8e6e3;
       --ok: #2f6b4f;
-      --radius: 10px;
-      --shadow: 0 18px 45px rgb(23 35 27 / 8%);
+      --radius: 12px;
+      --shadow: 0 20px 50px rgb(26 26 46 / 8%);
+      --shadow-hover: 0 24px 56px rgb(26 26 46 / 14%);
+
+      /* syntax colors */
+      --syn-command: #fcd116;
+      --syn-flag: #6cb4ee;
+      --syn-path: #7ecf8b;
+      --syn-string: #f4a261;
+      --syn-comment: #6b7280;
+      --syn-number: #e2979c;
+      --syn-operator: #ce1126;
+
+      /* animation tokens */
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --duration-enter: 600ms;
+      --stagger: 60ms;
     }
 
     * {
@@ -36,20 +61,64 @@
     body {
       margin: 0;
       color: var(--foreground);
-      background:
-        radial-gradient(circle at top left, rgb(179 58 43 / 10%), transparent 32rem),
-        var(--background);
+      background: var(--background);
       font-family:
-        Georgia,
-        "Times New Roman",
-        serif;
-      line-height: 1.55;
+        "IBM Plex Sans",
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+      line-height: 1.6;
     }
 
     a {
       color: inherit;
     }
 
+    /* ── animated gradient backdrop ── */
+    .gradient-bg {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      opacity: 0.45;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 30%, rgb(0 56 168 / 35%), transparent),
+        radial-gradient(ellipse 70% 50% at 75% 20%, rgb(206 17 38 / 28%), transparent),
+        radial-gradient(ellipse 60% 55% at 50% 70%, rgb(252 209 22 / 32%), transparent);
+      background-size: 200% 200%;
+      animation: gradient-drift 18s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+
+    @keyframes gradient-drift {
+      0% {
+        background-position: 0% 0%;
+      }
+      25% {
+        background-position: 60% 30%;
+      }
+      50% {
+        background-position: 100% 60%;
+      }
+      75% {
+        background-position: 40% 100%;
+      }
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .gradient-bg {
+        animation: none;
+        background-position: 50% 50%;
+      }
+    }
+
+    /* ── topbar ── */
     .topbar {
       position: sticky;
       top: 0;
@@ -60,9 +129,10 @@
       justify-content: space-between;
       gap: 24px;
       border-bottom: 1px solid var(--border);
-      background: rgb(255 253 247 / 92%);
+      background: rgb(255 253 247 / 88%);
       padding: 0 24px;
-      backdrop-filter: blur(12px);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
     }
 
     .brand {
@@ -70,43 +140,52 @@
       font-weight: 700;
       text-decoration: none;
       white-space: nowrap;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      transition: opacity 200ms var(--ease-out);
+    }
+
+    .brand:hover {
+      opacity: 0.8;
     }
 
     .nav {
       display: flex;
       flex-wrap: wrap;
       justify-content: flex-end;
-      gap: 16px;
-      font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
+      gap: 4px;
       font-size: 0.875rem;
+      font-weight: 500;
     }
 
     .nav a {
-      color: var(--foreground);
+      position: relative;
+      padding: 6px 10px;
+      border-radius: 6px;
+      color: var(--muted-foreground);
       text-decoration: none;
+      transition: color 200ms var(--ease-out), background 200ms var(--ease-out);
     }
 
     .nav a:hover {
-      color: var(--accent);
+      color: var(--primary);
+      background: var(--primary-soft);
     }
 
+    /* ── page ── */
     .page {
       width: min(1120px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 42px 0 64px;
+      padding: 48px 0 72px;
     }
 
+    /* ── hero ── */
     .hero {
       display: grid;
       grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
-      gap: 24px;
+      gap: 32px;
       align-items: stretch;
       min-height: calc(100vh - 128px);
     }
@@ -121,17 +200,9 @@
     .eyebrow {
       margin: 0 0 12px;
       color: var(--accent);
-      font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
       font-size: 0.78rem;
       font-weight: 700;
-      letter-spacing: 0;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
     }
 
@@ -145,37 +216,36 @@
     h1 {
       max-width: 780px;
       margin-bottom: 18px;
+      font-family: Georgia, "Times New Roman", serif;
       font-size: clamp(3.1rem, 8vw, 6.75rem);
       line-height: 0.92;
-      letter-spacing: 0;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--foreground) 40%, var(--primary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     h2 {
       margin-bottom: 12px;
+      font-family: Georgia, "Times New Roman", serif;
       font-size: clamp(2rem, 5vw, 3.2rem);
       line-height: 1;
-      letter-spacing: 0;
+      letter-spacing: -0.01em;
     }
 
     h3 {
       margin-bottom: 8px;
       font-size: 1.05rem;
-      line-height: 1.2;
+      font-weight: 600;
+      line-height: 1.3;
     }
 
     .lead {
       max-width: 720px;
       margin-bottom: 24px;
       color: var(--muted-foreground);
-      font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
-      font-size: clamp(1.05rem, 2vw, 1.25rem);
+      font-size: clamp(1.05rem, 2vw, 1.22rem);
     }
 
     .actions,
@@ -188,25 +258,29 @@
 
     .button {
       display: inline-flex;
-      min-height: 36px;
+      min-height: 40px;
       align-items: center;
       justify-content: center;
       border: 1px solid transparent;
       border-radius: 8px;
-      padding: 7px 12px;
-      background: var(--foreground);
-      color: var(--background);
-      font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
+      padding: 8px 16px;
+      background: var(--primary);
+      color: #fff;
       font-size: 0.9rem;
-      font-weight: 650;
+      font-weight: 600;
       text-decoration: none;
+      cursor: pointer;
+      transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out), background 200ms var(--ease-out);
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgb(0 56 168 / 25%);
+      background: #003090;
+    }
+
+    .button:active {
+      transform: translateY(0) scale(0.97);
     }
 
     .button.secondary {
@@ -215,24 +289,28 @@
       color: var(--foreground);
     }
 
+    .button.secondary:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      box-shadow: 0 6px 20px rgb(0 56 168 / 10%);
+    }
+
     .chip {
       display: inline-flex;
       align-items: center;
       border: 1px solid var(--border);
       border-radius: 999px;
       background: rgb(255 253 247 / 72%);
-      padding: 6px 10px;
+      padding: 6px 12px;
       color: var(--foreground);
-      font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
       font-size: 0.82rem;
       font-weight: 600;
+      transition: border-color 200ms, background 200ms;
+    }
+
+    .chip:hover {
+      border-color: var(--gold-deep);
+      background: var(--gold-soft);
     }
 
     .hero-panel,
@@ -247,7 +325,7 @@
 
     .hero-panel {
       align-self: center;
-      padding: 18px;
+      padding: 20px;
     }
 
     .flow-visual {
@@ -262,26 +340,26 @@
       gap: 12px;
       align-items: center;
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 10px;
       background: var(--background);
-      padding: 12px;
+      padding: 14px;
+      transition: border-color 250ms var(--ease-out), transform 250ms var(--ease-out), box-shadow 250ms var(--ease-out);
+    }
+
+    .flow-node:hover {
+      border-color: var(--primary);
+      transform: translateX(4px);
+      box-shadow: -4px 0 0 var(--primary);
     }
 
     .flow-node strong {
       display: block;
+      font-weight: 600;
       line-height: 1.2;
     }
 
     .flow-node span:last-child {
       color: var(--muted-foreground);
-      font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
       font-size: 0.82rem;
     }
 
@@ -291,22 +369,15 @@
       height: 34px;
       place-items: center;
       border-radius: 8px;
-      background: var(--foreground);
-      color: var(--background);
-      font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
+      background: linear-gradient(135deg, var(--primary), #0050d0);
+      color: #fff;
       font-size: 0.8rem;
-      font-weight: 750;
+      font-weight: 700;
     }
 
+    /* ── sections ── */
     section {
-      padding-top: 74px;
+      padding-top: 80px;
     }
 
     .section-head {
@@ -314,21 +385,13 @@
       align-items: flex-end;
       justify-content: space-between;
       gap: 24px;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
 
     .section-head p {
       max-width: 560px;
       margin-bottom: 0;
       color: var(--muted-foreground);
-      font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
     }
 
     .grid {
@@ -346,21 +409,43 @@
     }
 
     .card {
-      padding: 18px;
+      padding: 20px;
+      transition: transform 300ms var(--ease-out), box-shadow 300ms var(--ease-out), border-color 300ms var(--ease-out);
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-hover);
+      border-color: var(--gold-deep);
+    }
+
+    .card-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      margin-bottom: 10px;
+      color: var(--muted-foreground);
+    }
+
+    .card-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .card h3 {
+      transition: color 200ms;
+    }
+
+    .card:hover h3 {
+      color: var(--primary);
     }
 
     .card p,
     .card li,
     .artifact-panel li {
       color: var(--muted-foreground);
-      font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
       font-size: 0.92rem;
     }
 
@@ -374,6 +459,7 @@
       padding-left: 18px;
     }
 
+    /* ── pipeline ── */
     .pipeline {
       display: grid;
       grid-template-columns: repeat(7, minmax(128px, 1fr));
@@ -385,47 +471,43 @@
     .stage {
       min-height: 170px;
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 10px;
       background: var(--surface);
-      padding: 14px;
+      padding: 16px;
+      transition: transform 300ms var(--ease-out), box-shadow 300ms var(--ease-out), border-color 300ms;
+    }
+
+    .stage:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-hover);
+      border-color: var(--accent);
     }
 
     .stage .index {
       margin-bottom: 14px;
     }
 
+    .stage:nth-child(even) .index {
+      background: linear-gradient(135deg, var(--accent), #e8303f);
+    }
+
     .stage p {
       margin-bottom: 0;
       color: var(--muted-foreground);
-      font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
       font-size: 0.86rem;
     }
 
     .rule {
       margin-top: 14px;
-      border-left: 4px solid var(--accent);
-      border-radius: 8px;
-      background: var(--accent-soft);
-      padding: 14px 16px;
+      border-left: 4px solid var(--gold-deep);
+      border-radius: 10px;
+      background: var(--gold-soft);
+      padding: 14px 18px;
       color: var(--foreground);
-      font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
       font-size: 0.94rem;
     }
 
+    /* ── commands ── */
     .commands {
       display: grid;
       gap: 14px;
@@ -433,6 +515,12 @@
 
     .command-card {
       overflow: hidden;
+      transition: box-shadow 300ms var(--ease-out), border-color 300ms;
+    }
+
+    .command-card:hover {
+      box-shadow: var(--shadow-hover);
+      border-color: var(--primary);
     }
 
     .command-card header {
@@ -441,7 +529,7 @@
       justify-content: space-between;
       gap: 12px;
       border-bottom: 1px solid var(--border);
-      padding: 12px 16px;
+      padding: 14px 18px;
     }
 
     .command-card h3 {
@@ -450,39 +538,29 @@
 
     .tag {
       border-radius: 999px;
-      background: var(--muted);
-      padding: 4px 8px;
-      color: var(--muted-foreground);
-      font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
+      background: var(--primary-soft);
+      padding: 4px 10px;
+      color: var(--primary);
       font-size: 0.72rem;
       font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
 
     pre {
       margin: 0;
       overflow-x: auto;
-      background: var(--code);
+      background: var(--code-bg);
       color: var(--code-foreground);
-      padding: 16px;
-      font-size: 0.86rem;
-      line-height: 1.5;
+      padding: 18px 20px;
+      font-family: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.84rem;
+      line-height: 1.65;
     }
 
     code,
     pre {
-      font-family:
-        "SFMono-Regular",
-        Consolas,
-        "Liberation Mono",
-        Menlo,
-        monospace;
+      font-family: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     }
 
     p code,
@@ -490,11 +568,44 @@
       border: 1px solid var(--border);
       border-radius: 6px;
       background: var(--muted);
-      padding: 1px 5px;
+      padding: 1px 6px;
       color: var(--foreground);
-      font-size: 0.88em;
+      font-size: 0.86em;
     }
 
+    /* syntax highlight classes */
+    .syn-cmd {
+      color: var(--syn-command);
+      font-weight: 600;
+    }
+
+    .syn-flag {
+      color: var(--syn-flag);
+    }
+
+    .syn-path {
+      color: var(--syn-path);
+    }
+
+    .syn-str {
+      color: var(--syn-string);
+    }
+
+    .syn-comment {
+      color: var(--syn-comment);
+      font-style: italic;
+    }
+
+    .syn-num {
+      color: var(--syn-number);
+    }
+
+    .syn-op {
+      color: var(--syn-operator);
+      font-weight: 600;
+    }
+
+    /* ── artifact panel ── */
     .artifact-panel {
       overflow: hidden;
     }
@@ -503,6 +614,7 @@
       min-height: 100%;
     }
 
+    /* ── table ── */
     .table {
       width: 100%;
       border-collapse: collapse;
@@ -516,40 +628,35 @@
     .table th,
     .table td {
       border-bottom: 1px solid var(--border);
-      padding: 12px 14px;
+      padding: 14px 16px;
       text-align: left;
       vertical-align: top;
     }
 
     .table th {
-      background: var(--muted);
-      font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
+      background: var(--primary-soft);
+      color: var(--primary);
       font-size: 0.78rem;
+      font-weight: 700;
       text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
 
     .table td {
       color: var(--muted-foreground);
-      font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
       font-size: 0.92rem;
     }
 
     .table tr:last-child td {
       border-bottom: 0;
+    }
+
+    .table tbody tr {
+      transition: background 200ms;
+    }
+
+    .table tbody tr:hover {
+      background: var(--gold-soft);
     }
 
     .split {
@@ -560,21 +667,87 @@
     }
 
     .footer {
-      margin-top: 70px;
+      margin-top: 80px;
       border-top: 1px solid var(--border);
       padding-top: 24px;
       color: var(--muted-foreground);
-      font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
       font-size: 0.9rem;
     }
 
+    .footer p {
+      max-width: 600px;
+    }
+
+    /* ── philippine sun decoration ── */
+    .sun-decoration {
+      position: fixed;
+      top: -180px;
+      right: -180px;
+      width: 360px;
+      height: 360px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgb(252 209 22 / 8%) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── scroll animations ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity var(--duration-enter) var(--ease-out), transform var(--duration-enter) var(--ease-out);
+    }
+
+    .reveal-stagger > .reveal {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+
+    .reveal-stagger > .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 500ms var(--ease-out), transform 500ms var(--ease-out);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .reveal {
+        opacity: 1;
+        transform: none;
+      }
+
+      .reveal.visible {
+        transition: none;
+      }
+
+      .reveal-stagger > .reveal {
+        opacity: 1;
+        transform: none;
+      }
+
+      .reveal-stagger > .reveal.visible {
+        transition: none;
+      }
+
+      .card,
+      .stage,
+      .flow-node,
+      .command-card,
+      .button,
+      .chip {
+        transition: none;
+      }
+
+      html {
+        scroll-behavior: auto;
+      }
+    }
+
+    /* ── responsive ── */
     @media (max-width: 960px) {
 
       .hero,
@@ -607,7 +780,7 @@
 
       .nav {
         justify-content: flex-start;
-        gap: 10px 14px;
+        gap: 4px 8px;
       }
 
       .page {
@@ -639,6 +812,9 @@
 </head>
 
 <body>
+  <div class="gradient-bg" aria-hidden="true"></div>
+  <div class="sun-decoration" aria-hidden="true"></div>
+
   <header class="topbar">
     <a class="brand" href="#top">BosesPH</a>
     <nav class="nav" aria-label="Showcase sections">
@@ -653,7 +829,7 @@
   </header>
 
   <main id="top" class="page">
-    <section class="hero" aria-labelledby="hero-title">
+    <section class="hero reveal" aria-labelledby="hero-title">
       <div class="hero-copy">
         <p class="eyebrow">CLI-first speech-resource pipeline</p>
         <h1 id="hero-title">BosesPH Toolkit</h1>
@@ -709,7 +885,7 @@
     </section>
 
     <section id="pipeline" aria-labelledby="pipeline-title">
-      <div class="section-head">
+      <div class="section-head reveal">
         <div>
           <p class="eyebrow">End-to-end sequence</p>
           <h2 id="pipeline-title">Pipeline overview</h2>
@@ -722,51 +898,51 @@
         </p>
       </div>
 
-      <div class="pipeline" aria-label="BosesPH pipeline steps">
-        <article class="stage">
+      <div class="pipeline reveal-stagger" aria-label="BosesPH pipeline steps">
+        <article class="stage reveal">
           <span class="index">1</span>
           <h3>Import</h3>
           <p>Parse a PLD session, match WAV files to transcripts, inspect audio, and standardize files.</p>
         </article>
-        <article class="stage">
+        <article class="stage reveal">
           <span class="index">2</span>
           <h3>Normalize</h3>
           <p>Clean Unicode, whitespace, punctuation spacing, repeated punctuation, and transcript tags.</p>
         </article>
-        <article class="stage">
+        <article class="stage reveal">
           <span class="index">3</span>
           <h3>Review</h3>
           <p>Approve, fix, reject, skip, and resume clip decisions from the terminal.</p>
         </article>
-        <article class="stage">
+        <article class="stage reveal">
           <span class="index">4</span>
           <h3>Build</h3>
           <p>Filter approved clips and create speaker-aware train, validation, and test splits.</p>
         </article>
-        <article class="stage">
+        <article class="stage reveal">
           <span class="index">5</span>
           <h3>Transcribe</h3>
           <p>Run baseline or fine-tuned ASR on one file or an entire dataset split.</p>
         </article>
-        <article class="stage">
+        <article class="stage reveal">
           <span class="index">6</span>
           <h3>Evaluate</h3>
           <p>Compute WER and CER with normalized scoring text and write benchmark reports.</p>
         </article>
-        <article class="stage">
+        <article class="stage reveal">
           <span class="index">7</span>
           <h3>Fine-tune</h3>
           <p>Optionally train Whisper with LoRA and compare it against the baseline model.</p>
         </article>
       </div>
-      <div class="rule">
+      <div class="rule reveal">
         Review is a quality gate: only approved clips are included when
         building train, validation, and test splits.
       </div>
     </section>
 
     <section id="capabilities" aria-labelledby="capabilities-title">
-      <div class="section-head">
+      <div class="section-head reveal">
         <div>
           <p class="eyebrow">What the toolkit does</p>
           <h2 id="capabilities-title">Capabilities</h2>
@@ -778,54 +954,64 @@
         </p>
       </div>
 
-      <div class="grid">
-        <article class="card">
+      <div class="grid reveal-stagger">
+        <article class="card reveal">
+          <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
           <h3>Import PLD sessions</h3>
-          <p>Reads one recording session, parses metadata and transcripts, and produces a deterministic dataset folder.
-          </p>
+          <p>Reads one recording session, parses metadata and transcripts, and produces a deterministic dataset folder.</p>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/></svg></div>
           <h3>Validate audio</h3>
-          <p>Checks WAV structure, duration, sample rate, channels, sample width, corruption, silence, and quiet clips.
-          </p>
+          <p>Checks WAV structure, duration, sample rate, channels, sample width, corruption, silence, and quiet clips.</p>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon gold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg></div>
           <h3>Standardize audio</h3>
           <p>Copies or converts readable clips to mono, 16 kHz, signed 16-bit PCM WAV for ASR training.</p>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg></div>
           <h3>Normalize transcripts</h3>
           <p>Applies NFC Unicode, whitespace, punctuation, and allowed tag normalization in metadata.</p>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
           <h3>Review clips</h3>
           <p>Provides a resumable terminal workflow for approving, rejecting, or flagging clips that need fixes.</p>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon gold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
           <h3>Build datasets</h3>
           <p>Generates speaker-aware train, validation, and test CSVs with reproducible split seeds.</p>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>
           <h3>Transcribe audio</h3>
           <p>Runs Hugging Face ASR models on a single clip or a split and writes predictions CSV files.</p>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
           <h3>Evaluate metrics</h3>
           <p>Computes word error rate and character error rate with text normalized for scoring.</p>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon gold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
           <h3>Fine-tune Whisper</h3>
           <p>Uses Hugging Face Seq2SeqTrainer with LoRA defaults, optional fp16, and memory-aware settings.</p>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M11 18H8a2 2 0 0 1-2-2V9"/></svg></div>
           <h3>Compare models</h3>
           <p>Produces a Markdown comparison between baseline and fine-tuned benchmark results.</p>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
           <h3>Export notebooks</h3>
           <p>Generates Colab notebooks for GPU fine-tuning and evaluation workflows.</p>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon gold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
           <h3>Generate documentation</h3>
           <p>Writes dataset cards, model cards, JSON reports, benchmark reports, and metadata schemas.</p>
         </article>
@@ -833,7 +1019,7 @@
     </section>
 
     <section id="commands" aria-labelledby="commands-title">
-      <div class="section-head">
+      <div class="section-head reveal">
         <div>
           <p class="eyebrow">CLI reference</p>
           <h2 id="commands-title">Command reference</h2>
@@ -844,8 +1030,8 @@
         </p>
       </div>
 
-      <div class="commands">
-        <article class="command-card">
+      <div class="commands reveal-stagger">
+        <article class="command-card reveal">
           <header>
             <h3>Install and verify</h3>
             <span class="tag">setup</span>
@@ -861,7 +1047,7 @@ black --check .
 pytest</code></pre>
         </article>
 
-        <article class="command-card">
+        <article class="command-card reveal">
           <header>
             <h3>Import, normalize, and review</h3>
             <span class="tag">data prep</span>
@@ -871,7 +1057,7 @@ bosesph normalize-transcripts outputs/dataset
 bosesph review outputs/dataset</code></pre>
         </article>
 
-        <article class="command-card">
+        <article class="command-card reveal">
           <header>
             <h3>Build reproducible splits</h3>
             <span class="tag">dataset</span>
@@ -881,7 +1067,7 @@ bosesph review outputs/dataset</code></pre>
   --train 0.70 --val 0.15 --test 0.15 --seed 42</code></pre>
         </article>
 
-        <article class="command-card">
+        <article class="command-card reveal">
           <header>
             <h3>Transcribe one file or a full split</h3>
             <span class="tag">asr</span>
@@ -895,7 +1081,7 @@ bosesph transcribe outputs/dataset_15spk \
   --limit 300</code></pre>
         </article>
 
-        <article class="command-card">
+        <article class="command-card reveal">
           <header>
             <h3>Evaluate WER and CER</h3>
             <span class="tag">benchmark</span>
@@ -907,7 +1093,7 @@ bosesph transcribe outputs/dataset_15spk \
   --language kapampangan</code></pre>
         </article>
 
-        <article class="command-card">
+        <article class="command-card reveal">
           <header>
             <h3>Fine-tune with LoRA</h3>
             <span class="tag">training</span>
@@ -920,7 +1106,7 @@ bosesph transcribe outputs/dataset_15spk \
   --lora-r 32 --lora-alpha 64 --lora-dropout 0.05</code></pre>
         </article>
 
-        <article class="command-card">
+        <article class="command-card reveal">
           <header>
             <h3>Evaluate and compare the fine-tuned model</h3>
             <span class="tag">comparison</span>
@@ -941,7 +1127,7 @@ bosesph compare \
   --output outputs/benchmark/comparison.md</code></pre>
         </article>
 
-        <article class="command-card">
+        <article class="command-card reveal">
           <header>
             <h3>Export Colab notebooks</h3>
             <span class="tag">notebooks</span>
@@ -959,7 +1145,7 @@ bosesph export-eval-colab \
   --output colab_eval.ipynb</code></pre>
         </article>
 
-        <article class="command-card">
+        <article class="command-card reveal">
           <header>
             <h3>Run the API and web app</h3>
             <span class="tag">interfaces</span>
@@ -972,7 +1158,7 @@ pnpm --dir apps/web dev
 # http://localhost:3000</code></pre>
         </article>
 
-        <article class="command-card">
+        <article class="command-card reveal">
           <header>
             <h3>Frontend checks</h3>
             <span class="tag">quality</span>
@@ -985,7 +1171,7 @@ pnpm --dir apps/web build</code></pre>
     </section>
 
     <section id="outputs" aria-labelledby="outputs-title">
-      <div class="section-head">
+      <div class="section-head reveal">
         <div>
           <p class="eyebrow">Generated artifacts</p>
           <h2 id="outputs-title">Output artifacts</h2>
@@ -996,7 +1182,7 @@ pnpm --dir apps/web build</code></pre>
         </p>
       </div>
 
-      <div class="split">
+      <div class="split reveal">
         <article class="artifact-panel">
           <pre><code>outputs/
   dataset/
@@ -1032,20 +1218,24 @@ pnpm --dir apps/web build</code></pre>
       model_card.md</code></pre>
         </article>
 
-        <div class="grid two">
-          <article class="card">
+        <div class="grid two reveal-stagger">
+          <article class="card reveal">
+            <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
             <h3>Dataset package</h3>
             <p>Clean audio, complete metadata, split CSVs, reproducible stats, and dataset card.</p>
           </article>
-          <article class="card">
+          <article class="card reveal">
+            <div class="card-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/><line x1="10" y1="14" x2="17" y2="14"/><line x1="10" y1="18" x2="14" y2="18"/></svg></div>
             <h3>Benchmark package</h3>
             <p>Predictions, WER/CER JSON, Markdown reports, and baseline vs fine-tuned comparison.</p>
           </article>
-          <article class="card">
+          <article class="card reveal">
+            <div class="card-icon gold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
             <h3>Model package</h3>
             <p>Fine-tuned model files, processor files, training configuration, and generated model card.</p>
           </article>
-          <article class="card">
+          <article class="card reveal">
+            <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
             <h3>Notebook package</h3>
             <p>Ready-to-run Colab notebooks for cloud GPU fine-tuning and model evaluation.</p>
           </article>
@@ -1054,7 +1244,7 @@ pnpm --dir apps/web build</code></pre>
     </section>
 
     <section id="interfaces" aria-labelledby="interfaces-title">
-      <div class="section-head">
+      <div class="section-head reveal">
         <div>
           <p class="eyebrow">Ways to operate it</p>
           <h2 id="interfaces-title">Interfaces</h2>
@@ -1065,51 +1255,53 @@ pnpm --dir apps/web build</code></pre>
         </p>
       </div>
 
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Interface</th>
-            <th>Purpose</th>
-            <th>Capabilities</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><strong>CLI</strong></td>
-            <td>Primary reproducible workflow for developers and researchers.</td>
-            <td>Import, validate, normalize, review, build, transcribe, evaluate, fine-tune, compare, export notebooks.
-            </td>
-          </tr>
-          <tr>
-            <td><strong>FastAPI</strong></td>
-            <td>HTTP layer for dashboards, uploads, and background jobs.</td>
-            <td><code>/project-status</code>, <code>/demo/transcribe</code>, <code>/jobs/{id}</code>, upload,
-              validation, build, train, evaluate.</td>
-          </tr>
-          <tr>
-            <td><strong>MCP</strong></td>
-            <td>Agent-facing tools for automated project operation.</td>
-            <td><code>get_project_status</code>, <code>validate_metadata</code>, <code>import_pld_session</code>,
-              <code>normalize_transcripts</code>, <code>build_dataset</code>, <code>transcribe_dataset</code>,
-              <code>evaluate_predictions</code>.</td>
-          </tr>
-          <tr>
-            <td><strong>Next.js web</strong></td>
-            <td>Dashboard and live demo for showing pipeline status and transcriptions.</td>
-            <td>Polling metrics cards, comparison chart, upload demo, model selection, optional reference scoring.</td>
-          </tr>
-          <tr>
-            <td><strong>Colab and scripts</strong></td>
-            <td>GPU-friendly training, evaluation, and prepared speaker subsets.</td>
-            <td>Fine-tuning notebook, evaluation notebook, 5/10/15/30-speaker preparation scripts, evaluation shell
-              scripts.</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="reveal">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Interface</th>
+              <th>Purpose</th>
+              <th>Capabilities</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>CLI</strong></td>
+              <td>Primary reproducible workflow for developers and researchers.</td>
+              <td>Import, validate, normalize, review, build, transcribe, evaluate, fine-tune, compare, export notebooks.
+              </td>
+            </tr>
+            <tr>
+              <td><strong>FastAPI</strong></td>
+              <td>HTTP layer for dashboards, uploads, and background jobs.</td>
+              <td><code>/project-status</code>, <code>/demo/transcribe</code>, <code>/jobs/{id}</code>, upload,
+                validation, build, train, evaluate.</td>
+            </tr>
+            <tr>
+              <td><strong>MCP</strong></td>
+              <td>Agent-facing tools for automated project operation.</td>
+              <td><code>get_project_status</code>, <code>validate_metadata</code>, <code>import_pld_session</code>,
+                <code>normalize_transcripts</code>, <code>build_dataset</code>, <code>transcribe_dataset</code>,
+                <code>evaluate_predictions</code>.</td>
+            </tr>
+            <tr>
+              <td><strong>Next.js web</strong></td>
+              <td>Dashboard and live demo for showing pipeline status and transcriptions.</td>
+              <td>Polling metrics cards, comparison chart, upload demo, model selection, optional reference scoring.</td>
+            </tr>
+            <tr>
+              <td><strong>Colab and scripts</strong></td>
+              <td>GPU-friendly training, evaluation, and prepared speaker subsets.</td>
+              <td>Fine-tuning notebook, evaluation notebook, 5/10/15/30-speaker preparation scripts, evaluation shell
+                scripts.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <section id="standards" aria-labelledby="standards-title">
-      <div class="section-head">
+      <div class="section-head reveal">
         <div>
           <p class="eyebrow">Quality and safety</p>
           <h2 id="standards-title">Data standards and safety</h2>
@@ -1120,8 +1312,9 @@ pnpm --dir apps/web build</code></pre>
         </p>
       </div>
 
-      <div class="grid three">
-        <article class="card">
+      <div class="grid three reveal-stagger">
+        <article class="card reveal">
+          <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
           <h3>Required metadata</h3>
           <ul>
             <li><code>audio_id</code>, <code>file_path</code>, <code>transcript</code>, <code>language</code></li>
@@ -1129,7 +1322,8 @@ pnpm --dir apps/web build</code></pre>
             <li><code>split</code>, <code>quality_status</code>, reviewer notes and provenance fields</li>
           </ul>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></div>
           <h3>Transcript tags</h3>
           <ul>
             <li><code>[noise]</code> for overlapping non-speech sound</li>
@@ -1138,7 +1332,8 @@ pnpm --dir apps/web build</code></pre>
             <li><code>[silence]</code> for meaningful silence within a clip</li>
           </ul>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon gold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
           <h3>Language codes</h3>
           <ul>
             <li><code>pam</code> Kapampangan pilot language</li>
@@ -1146,17 +1341,20 @@ pnpm --dir apps/web build</code></pre>
             <li><code>eng;fil</code> style code-switch metadata when needed</li>
           </ul>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg></div>
           <h3>Deterministic IDs</h3>
           <p>Audio IDs use language prefixes and six digits, such as <code>pam_000001</code>. Speaker IDs stay
             anonymous, such as <code>spk_001</code>.</p>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
           <h3>Review statuses</h3>
           <p>Clips move through pending, needs review, approved, and rejected states. Only approved clips enter dataset
             builds.</p>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon gold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
           <h3>Repository safety</h3>
           <p>Do not commit secrets, <code>.env</code> files, private audio, personal speaker metadata, generated
             <code>outputs/</code>, or model weights.</p>
@@ -1165,7 +1363,7 @@ pnpm --dir apps/web build</code></pre>
     </section>
 
     <section id="run" aria-labelledby="run-title">
-      <div class="section-head">
+      <div class="section-head reveal">
         <div>
           <p class="eyebrow">Local walkthrough</p>
           <h2 id="run-title">Run it locally</h2>
@@ -1176,25 +1374,28 @@ pnpm --dir apps/web build</code></pre>
         </p>
       </div>
 
-      <div class="grid three">
-        <article class="card">
+      <div class="grid three reveal-stagger">
+        <article class="card reveal">
+          <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
           <h3>1. Prepare</h3>
           <p>Create a Python 3.10+ environment, install the package with extras, and validate the sample metadata
             schema.</p>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
           <h3>2. Build data</h3>
           <p>Import PLD audio, normalize transcripts, complete review, and build deterministic train/validation/test
             splits.</p>
         </article>
-        <article class="card">
+        <article class="card reveal">
+          <div class="card-icon gold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
           <h3>3. Benchmark</h3>
           <p>Run Whisper baseline transcription, evaluate WER/CER, optionally fine-tune with LoRA, then compare models.
           </p>
         </article>
       </div>
 
-      <article class="command-card" style="margin-top: 14px">
+      <article class="command-card reveal" style="margin-top: 14px">
         <header>
           <h3>Minimal demo path</h3>
           <span class="tag">copy-ready</span>
@@ -1214,7 +1415,7 @@ pnpm --dir apps/web dev</code></pre>
       </article>
     </section>
 
-    <footer class="footer">
+    <footer class="footer reveal">
       <p>
         BosesPH Toolkit is built for reproducible Philippine-language speech
         resource development: clean datasets, transparent benchmarks, and
@@ -1222,6 +1423,87 @@ pnpm --dir apps/web dev</code></pre>
       </p>
     </footer>
   </main>
+
+  <script>
+    // scroll-reveal via IntersectionObserver
+    (function () {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          var el = entry.target;
+
+          if (el.classList.contains('reveal-stagger')) {
+            var children = el.querySelectorAll('.reveal');
+            children.forEach(function (child, i) {
+              child.style.transitionDelay = (i * 60) + 'ms';
+              child.classList.add('visible');
+            });
+          } else {
+            el.classList.add('visible');
+          }
+          observer.unobserve(el);
+        });
+      }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+
+      document.querySelectorAll('.reveal, .reveal-stagger').forEach(function (el) {
+        observer.observe(el);
+      });
+    })();
+
+    // syntax highlighting for code blocks
+    (function () {
+      var commands = [
+        'python3', 'python', 'source', 'pip', 'bosesph', 'ruff', 'black',
+        'pytest', 'pnpm', 'bosesph-api'
+      ];
+      var subcommands = [
+        'import-pld', 'normalize-transcripts', 'review', 'build-dataset',
+        'transcribe', 'evaluate', 'finetune', 'compare', 'export-colab',
+        'export-eval-colab', 'validate-metadata', 'export-metadata-schema',
+        'install', 'check', 'lint', 'test', 'build', 'dev', 'venv'
+      ];
+
+      document.querySelectorAll('pre code').forEach(function (block) {
+        var html = block.innerHTML;
+
+        // comments
+        html = html.replace(/(#[^\n]*)/g, '<span class="syn-comment">$1</span>');
+
+        // strings in double quotes
+        html = html.replace(/"([^"<]*)"/g, '<span class="syn-str">"$1"</span>');
+
+        // flags (--word or -letter)
+        html = html.replace(/(--?[a-z][-a-z0-9]*)/g, '<span class="syn-flag">$1</span>');
+
+        // numbers (standalone)
+        html = html.replace(/\b(\d+\.?\d*)\b/g, '<span class="syn-num">$1</span>');
+
+        // file paths (words with / in them)
+        html = html.replace(/(?<![<\w])(\/?(?:[\w.-]+\/)+[\w.*-]+)/g, '<span class="syn-path">$1</span>');
+
+        // subcommands
+        subcommands.forEach(function (sub) {
+          var re = new RegExp('(?<=>|\\s)(' + sub.replace(/-/g, '\\-') + ')(?=\\s|<|$)', 'g');
+          html = html.replace(re, '<span class="syn-flag">$1</span>');
+        });
+
+        // commands
+        commands.forEach(function (cmd) {
+          var re = new RegExp('(?:^|\\n|>)(' + cmd.replace(/-/g, '\\-') + ')(?=\\s|<|$)', 'gm');
+          html = html.replace(re, function (match, p1) {
+            return match.replace(p1, '<span class="syn-cmd">' + p1 + '</span>');
+          });
+        });
+
+        // backslash continuations
+        html = html.replace(/(\\\n)/g, '<span class="syn-comment">$1</span>');
+
+        block.innerHTML = html;
+      });
+    })();
+  </script>
 </body>
 
 </html>

@@ -34,13 +34,14 @@ afterEach(() => {
 describe("DashboardGrid", () => {
   it("shows skeleton cards while loading", () => {
     vi.mocked(getProjectStatus).mockReturnValue(new Promise(() => {}));
-    render(<DashboardGrid />);
-    expect(screen.getAllByTestId("status-card-skeleton")).toHaveLength(4);
+    const { container } = render(<DashboardGrid />);
+    expect(container.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(4);
   });
 
-  it("renders all 4 cards with data after fetch resolves", async () => {
+  it("renders speaker and metric cards after fetch resolves", async () => {
     vi.mocked(getProjectStatus).mockResolvedValue(mockStatus);
     render(<DashboardGrid />);
+    expect(screen.getByText("Training Speakers")).toBeInTheDocument();
     expect(await screen.findByText("30")).toBeInTheDocument();
     expect(screen.getByText("34.2%")).toBeInTheDocument();
     expect(screen.getByText("19.8%")).toBeInTheDocument();

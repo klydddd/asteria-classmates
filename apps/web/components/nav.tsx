@@ -10,15 +10,22 @@ const links = [
 export default function Nav() {
   const pathname = usePathname();
   return (
-    <nav className="flex items-center justify-between h-14 px-6 bg-surface border-b border-border">
-      <span className="font-bold text-lg text-foreground font-serif">BosesPH</span>
-      <div className="flex gap-6">
+    <nav className="sticky top-0 z-40 flex items-center justify-between h-16 px-6 bg-surface/80 backdrop-blur-md border-b border-border">
+      <div className="flex items-baseline gap-2.5">
+        <span className="font-bold text-xl text-foreground font-serif leading-none">BosesPH</span>
+        <span className="hidden sm:inline text-xs text-muted-foreground/60 font-sans tracking-wide">
+          Kapampangan ASR
+        </span>
+      </div>
+      <div className="flex items-center gap-1">
         {links.map(({ href, label }) => (
           <Link
             key={href}
             href={href}
-            className={`text-foreground text-sm hover:text-accent transition-colors ${
-              pathname === href ? "underline" : ""
+            className={`px-3 py-1.5 rounded-md text-sm font-sans transition-all duration-150 ${
+              pathname === href
+                ? "bg-foreground text-background font-medium"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
             {label}

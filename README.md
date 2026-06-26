@@ -14,7 +14,7 @@ The BosesPH Toolkit provides multiple interfaces to interact with the core speec
 
 ```mermaid
 graph TD
-    subgraph BosesPH Core Pipeline
+    subgraph core[BosesPH Core Pipeline]
         A[Raw Audio & Transcripts] --> B(Ingest & Validate)
         B --> C(Normalize & Review)
         C --> D(Build Dataset)
@@ -24,13 +24,13 @@ graph TD
         G --> H[Fine-tuned Model]
     end
 
-    subgraph Interfaces
-        CLI[CLI Commands] --> BosesPH Core Pipeline
-        API[FastAPI Server] --> BosesPH Core Pipeline
-        MCP[FastMCP Server] --> BosesPH Core Pipeline
+    subgraph interfaces[Interfaces]
+        CLI[CLI Commands] --> core
+        API[FastAPI Server] --> core
+        MCP[FastMCP Server] --> core
     end
 
-    subgraph Consumers
+    subgraph consumers[Consumers]
         Human[Developers / Reviewers] --> CLI
         Web[Web Dashboard] --> API
         Agent[Dedicated BosesPH Agent] --> MCP

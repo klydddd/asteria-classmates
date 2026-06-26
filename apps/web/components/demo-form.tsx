@@ -48,7 +48,7 @@ export default function DemoForm({ options, onSubmit }: DemoFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {/* Drop zone */}
       <div
         role="region"
@@ -60,31 +60,51 @@ export default function DemoForm({ options, onSubmit }: DemoFormProps) {
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
-        className={`relative flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 cursor-pointer transition-colors ${
+        className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-10 cursor-pointer transition-all duration-200 ${
           dragOver
-            ? "border-accent bg-accent/5"
-            : "border-border hover:border-accent/40"
+            ? "border-accent bg-accent/5 scale-[1.01]"
+            : file
+            ? "border-accent/50 bg-accent/3"
+            : "border-border hover:border-accent/40 hover:bg-muted/30"
         }`}
       >
+        {/* Waveform icon */}
         <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="32"
-          height="32"
-          viewBox="0 0 24 24"
+          width="40"
+          height="28"
+          viewBox="0 0 40 28"
           fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="text-muted-foreground"
+          className={`transition-colors ${file ? "text-accent" : "text-muted-foreground/50"}`}
         >
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="17 8 12 3 7 8" />
-          <line x1="12" y1="3" x2="12" y2="15" />
+          <rect x="0" y="10" width="3" height="8" rx="1.5" fill="currentColor" />
+          <rect x="5" y="6" width="3" height="16" rx="1.5" fill="currentColor" />
+          <rect x="10" y="2" width="3" height="24" rx="1.5" fill="currentColor" />
+          <rect x="15" y="7" width="3" height="14" rx="1.5" fill="currentColor" />
+          <rect x="20" y="4" width="3" height="20" rx="1.5" fill="currentColor" />
+          <rect x="25" y="8" width="3" height="12" rx="1.5" fill="currentColor" />
+          <rect x="30" y="5" width="3" height="18" rx="1.5" fill="currentColor" />
+          <rect x="35" y="11" width="3" height="6" rx="1.5" fill="currentColor" />
         </svg>
-        <p className="text-sm text-muted-foreground">
-          {file ? file.name : "Drop an audio file here, or click to browse"}
-        </p>
+
+        {file ? (
+          <div className="text-center">
+            <p className="text-sm font-medium text-foreground font-sans">{file.name}</p>
+            <p className="text-xs text-muted-foreground font-sans mt-0.5">
+              {(file.size / 1024).toFixed(0)} KB · Click to change
+            </p>
+          </div>
+        ) : (
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground font-sans">
+              Drop an audio file here, or{" "}
+              <span className="text-foreground underline underline-offset-2">click to browse</span>
+            </p>
+            <p className="text-xs text-muted-foreground/60 font-sans mt-1">
+              .wav · .mp3 · .flac · .ogg
+            </p>
+          </div>
+        )}
+
         <input
           ref={inputRef}
           data-testid="audio-input"
@@ -95,48 +115,54 @@ export default function DemoForm({ options, onSubmit }: DemoFormProps) {
         />
       </div>
 
-      {/* Language */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Language</label>
-        <Select value={languageId} onValueChange={(v) => v && setLanguageId(v)}>
-          <SelectTrigger data-testid="language-select">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {options.languages.map((lang) => (
-              <SelectItem key={lang.id} value={lang.id}>
-                {lang.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Language */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold font-sans text-muted-foreground uppercase tracking-widest">
+            Language
+          </label>
+          <Select value={languageId} onValueChange={(v) => v && setLanguageId(v)}>
+            <SelectTrigger data-testid="language-select" className="font-sans">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {options.languages.map((lang) => (
+                <SelectItem key={lang.id} value={lang.id} className="font-sans">
+                  {lang.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-      {/* Model */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Model</label>
-        <Select value={modelId} onValueChange={(v) => v && setModelId(v)}>
-          <SelectTrigger data-testid="model-select">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {options.models.map((m) => (
-              <SelectItem key={m.id} value={m.id} disabled={!m.available}>
-                {m.label}
-                {!m.available && m.unavailable_reason
-                  ? ` (${m.unavailable_reason})`
-                  : ""}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Model */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold font-sans text-muted-foreground uppercase tracking-widest">
+            Model
+          </label>
+          <Select value={modelId} onValueChange={(v) => v && setModelId(v)}>
+            <SelectTrigger data-testid="model-select" className="font-sans">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {options.models.map((m) => (
+                <SelectItem key={m.id} value={m.id} disabled={!m.available} className="font-sans">
+                  {m.label}
+                  {!m.available && m.unavailable_reason ? ` (${m.unavailable_reason})` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Reference transcript */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">
+      <div className="space-y-1.5">
+        <label className="text-xs font-semibold font-sans text-muted-foreground uppercase tracking-widest">
           Reference transcript{" "}
-          <span className="text-muted-foreground">(optional — enables WER/CER)</span>
+          <span className="normal-case tracking-normal font-normal text-muted-foreground/60">
+            — optional, enables WER/CER
+          </span>
         </label>
         <Textarea
           data-testid="reference-input"
@@ -144,6 +170,7 @@ export default function DemoForm({ options, onSubmit }: DemoFormProps) {
           value={reference}
           onChange={(e) => setReference(e.target.value)}
           rows={3}
+          className="font-serif resize-none"
         />
       </div>
 
@@ -151,7 +178,7 @@ export default function DemoForm({ options, onSubmit }: DemoFormProps) {
       <Button
         type="submit"
         disabled={!file}
-        className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+        className="w-full h-10 bg-accent text-accent-foreground hover:bg-accent/90 font-sans font-medium tracking-wide"
       >
         Transcribe
       </Button>
