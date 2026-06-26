@@ -96,8 +96,8 @@ class TrainRequest(BaseModel):
 
     dataset: str = Field(description="Relative path to built dataset directory.")
     output: str = Field(description="Relative path for model output.")
-    base_model: str = "openai/whisper-tiny"
-    language: str = "tl"
+    base_model: str = "openai/whisper-small"
+    language: str | None = None
     epochs: int = 3
     max_steps: int | None = None
     batch_size: int = 8

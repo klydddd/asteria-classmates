@@ -333,3 +333,12 @@ def test_openapi_documents_concrete_response_models() -> None:
         ]["schema"]["$ref"]
         == "#/components/schemas/Job"
     )
+
+
+class TestTrainRequestDefaults:
+    def test_train_request_new_defaults(self) -> None:
+        from bosesph.api.models import TrainRequest
+
+        req = TrainRequest(dataset="ds", output="out")
+        assert req.base_model == "openai/whisper-small"
+        assert req.language is None

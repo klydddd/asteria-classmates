@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import gc
 import textwrap
 from collections.abc import Callable
 from datetime import datetime, timezone
@@ -30,7 +31,7 @@ class FineTuneConfig(BaseModel):
     """Training configuration persisted as ``training_config.json``."""
 
     base_model: str
-    language: str
+    language: str | None
     epochs: int
     max_steps: int | None
     batch_size: int
@@ -38,8 +39,8 @@ class FineTuneConfig(BaseModel):
     train_clips: int
     val_clips: int
     use_lora: bool = False
-    lora_r: int = 16
-    lora_alpha: int = 32
+    lora_r: int = 32
+    lora_alpha: int = 64
     lora_dropout: float = 0.05
 
 
@@ -48,7 +49,7 @@ class FineTuneReport(BaseModel):
 
     output_dir: str
     base_model: str
-    language: str
+    language: str | None
     train_clips: int
     val_clips: int
     steps: int
@@ -181,6 +182,39 @@ def _make_dataset_class() -> type:
 
 
 # ---------------------------------------------------------------------------
+# Memory cleanup callback
+# ---------------------------------------------------------------------------
+
+
+def _make_memory_cleanup_callback(transformers: Any, every_n_steps: int = 50) -> Any:
+    """Return a TrainerCallback that periodically releases the device cache.
+
+    On Apple Silicon (MPS) the caching allocator never returns freed memory to
+    the OS, so resident memory climbs as new tensor shapes are encountered.
+    Emptying the cache every ``every_n_steps`` steps caps that growth.
+    """
+    torch = _require_torch()
+
+    class MemoryCleanupCallback(transformers.TrainerCallback):  # type: ignore[name-defined,misc]
+        def on_step_end(
+            self,
+            args: Any,
+            state: Any,
+            control: Any,
+            **kwargs: Any,
+        ) -> None:
+            if every_n_steps <= 0 or state.global_step % every_n_steps != 0:
+                return
+            gc.collect()
+            if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                torch.mps.empty_cache()
+            elif torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+    return MemoryCleanupCallback()
+
+
+# ---------------------------------------------------------------------------
 # Data collator
 # ---------------------------------------------------------------------------
 
@@ -250,6 +284,21 @@ def _generate_model_card(
     else:
         method = "Full fine-tuning"
 
+    lang_display = config.language if config.language is not None else "unconstrained"
+    if config.language is None:
+        lang_limitation = (
+            "Kapampangan is not a natively supported Whisper language. "
+            "This model decodes without a forced language token (unconstrained), "
+            "which avoids language-specific tokenisation artefacts but may "
+            "produce output in another language on ambiguous audio."
+        )
+    else:
+        lang_limitation = (
+            f"Kapampangan is not a natively supported Whisper language. This model "
+            f"uses the `{config.language}` language token as a proxy, "
+            f"which may introduce tokenisation artefacts."
+        )
+
     return textwrap.dedent(
         f"""\
         # BosesPH Fine-Tuned ASR Model
@@ -264,7 +313,7 @@ def _generate_model_card(
         | Field | Value |
         |---|---|
         | Base model | {config.base_model} |
-        | Language token | {config.language} (proxy for Kapampangan) |
+        | Language token | {lang_display} |
         | Training clips | {config.train_clips} |
         | Validation clips | {config.val_clips} |
         | Epochs | {config.epochs} |
@@ -288,9 +337,7 @@ def _generate_model_card(
 
         ## Limitations
 
-        - Kapampangan is not a natively supported Whisper language. This model
-          uses the Tagalog (`{config.language}`) language token as a proxy,
-          which may introduce tokenization artefacts.
+        - {lang_limitation}
         - Training data comes from a single PLD recording session with limited
           speaker diversity. Real-world performance may vary.
         - The model inherits all base-Whisper limitations (hallucinations on
@@ -317,8 +364,8 @@ def finetune_model(
     dataset_dir: str | Path,
     output_dir: str | Path,
     *,
-    base_model: str = "openai/whisper-tiny",
-    language: str = "tl",
+    base_model: str = "openai/whisper-small",
+    language: str | None = None,
     epochs: int = 3,
     max_steps: int | None = None,
     batch_size: int = 8,
@@ -327,9 +374,10 @@ def finetune_model(
     eval_split: str = "validation",
     gradient_checkpointing: bool = False,
     optim: str = "adamw_torch",
+    fp16: bool = False,
     use_lora: bool = True,
-    lora_r: int = 16,
-    lora_alpha: int = 32,
+    lora_r: int = 32,
+    lora_alpha: int = 64,
     lora_dropout: float = 0.05,
     progress_fn: Callable[[str], None] | None = None,
 ) -> FineTuneReport:
@@ -379,24 +427,23 @@ def finetune_model(
     model.generation_config.task = "transcribe"
     model.generation_config.forced_decoder_ids = None
 
-    if gradient_checkpointing:
-        model.config.use_cache = False
-        model.gradient_checkpointing_enable(
-            gradient_checkpointing_kwargs={"use_reentrant": False}
-        )
-
     # ------------------------------------------------------------------
     # Apply LoRA adapter (if enabled)
     # ------------------------------------------------------------------
     if use_lora:
         peft = _require_peft()
-        if gradient_checkpointing:
-            model.enable_input_require_grads()
+        # Target decoder-only: encoder needs no gradients for ASR fine-tuning.
+        decoder_target_modules = [
+            f"model.decoder.layers.{i}.{attn}.{proj}"
+            for i in range(model.config.decoder_layers)
+            for attn in ("self_attn", "encoder_attn")
+            for proj in ("q_proj", "v_proj")
+        ]
         lora_config = peft.LoraConfig(
             r=lora_r,
             lora_alpha=lora_alpha,
             lora_dropout=lora_dropout,
-            target_modules=["q_proj", "v_proj"],
+            target_modules=decoder_target_modules,
             bias="none",
         )
         model = peft.get_peft_model(model, lora_config)
@@ -404,6 +451,15 @@ def finetune_model(
         _log(
             f"LoRA enabled: {trainable:,} trainable / {total:,} total params "
             f"({100 * trainable / total:.1f}%)"
+        )
+
+    # Enable gradient checkpointing after LoRA wrapping so it applies to
+    # the final model object (PEFT wrap can otherwise reset this state).
+    if gradient_checkpointing:
+        model.config.use_cache = False
+        model.enable_input_require_grads()
+        model.gradient_checkpointing_enable(
+            gradient_checkpointing_kwargs={"use_reentrant": False}
         )
 
     # ------------------------------------------------------------------
@@ -427,7 +483,7 @@ def finetune_model(
         "warmup_steps": 50,
         "logging_steps": 10,
         "save_strategy": "epoch",
-        "fp16": False,
+        "fp16": fp16,
         "remove_unused_columns": False,
         "report_to": "none",
         "optim": optim,
@@ -459,6 +515,7 @@ def finetune_model(
         eval_dataset=eval_dataset,
         data_collator=collator,
         tokenizer=processor.feature_extractor,
+        callbacks=[_make_memory_cleanup_callback(transformers)],
     )
     train_result = trainer.train()
     steps = train_result.global_step
