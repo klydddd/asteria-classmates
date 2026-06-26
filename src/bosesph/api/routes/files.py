@@ -52,12 +52,12 @@ def _metric_summary(path: Path) -> dict[str, float] | None:
 def project_status(request: Request) -> ProjectStatus:
     """Return deterministic dashboard data from conventional output paths."""
     ws: Path = request.app.state.settings.workspace.resolve()
-    dataset_stats = _read_json(ws / "dataset_15spk" / "dataset_stats.json")
+    dataset_stats = _read_json(ws / "dataset_30spk" / "dataset_stats.json")
     model_root = ws / "model"
     model_dir: Path | None = None
 
     if model_root.is_dir():
-        preferred = model_root / "colab_finetuned_model_tl"
+        preferred = model_root / "colab_finetuned_model_tl_30speakers"
         if preferred.is_dir() and (preferred / "model_card.md").is_file():
             model_dir = preferred
         else:
@@ -76,8 +76,11 @@ def project_status(request: Request) -> ProjectStatus:
         baseline_metrics=_metric_summary(
             ws / "benchmark" / "baseline_small_tl" / "results.json"
         ),
-        finetuned_metrics=_metric_summary(
+        previous_finetuned_metrics=_metric_summary(
             ws / "benchmark" / "colab_small_tl" / "results.json"
+        ),
+        finetuned_metrics=_metric_summary(
+            ws / "benchmark" / "colab_small_tl_30spk" / "results.json"
         ),
         model_available=model_dir is not None,
         model_dir=str(model_dir.relative_to(ws)) if model_dir else None,

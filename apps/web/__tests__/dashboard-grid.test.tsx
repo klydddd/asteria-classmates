@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import DashboardGrid from "@/components/dashboard-grid";
@@ -12,8 +12,15 @@ import { getProjectStatus } from "@/lib/api";
 
 const mockStatus: ProjectStatus = {
   dataset_available: true,
-  dataset_stats: { total_clips: 50, approved_clips: 40, num_speakers: 5, total_duration_minutes: 12.3 },
+  dataset_stats: {
+    total_clips: 50,
+    approved_clips: 40,
+    num_speakers: 5,
+    total_speakers: 30,
+    total_duration_minutes: 12.3,
+  },
   baseline_metrics: { wer: 0.342, cer: 0.145 },
+  previous_finetuned_metrics: { wer: 0.256, cer: 0.112 },
   finetuned_metrics: { wer: 0.198, cer: 0.091 },
   model_available: true,
   model_dir: "model/v1",
@@ -34,10 +41,10 @@ describe("DashboardGrid", () => {
   it("renders all 4 cards with data after fetch resolves", async () => {
     vi.mocked(getProjectStatus).mockResolvedValue(mockStatus);
     render(<DashboardGrid />);
-    expect(await screen.findByText("50")).toBeInTheDocument();
+    expect(await screen.findByText("30")).toBeInTheDocument();
     expect(screen.getByText("34.2%")).toBeInTheDocument();
     expect(screen.getByText("19.8%")).toBeInTheDocument();
-    expect(screen.getByText("v1")).toBeInTheDocument();
+    expect(screen.getByText("9.1%")).toBeInTheDocument();
   });
 
   it("shows em dash for null fields", async () => {
@@ -66,7 +73,7 @@ describe("DashboardGrid", () => {
     render(<DashboardGrid />);
     expect(await screen.findByRole("button", { name: /retry/i })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /retry/i }));
-    expect(await screen.findByText("50")).toBeInTheDocument();
+    expect(await screen.findByText("30")).toBeInTheDocument();
   });
 
   it("re-fetches after 10 seconds", async () => {
@@ -74,7 +81,7 @@ describe("DashboardGrid", () => {
     vi.mocked(getProjectStatus).mockResolvedValue(mockStatus);
     render(<DashboardGrid />);
     await waitFor(() => {
-      expect(screen.getByText("50")).toBeInTheDocument();
+      expect(screen.getByText("30")).toBeInTheDocument();
     });
     const callsBefore = vi.mocked(getProjectStatus).mock.calls.length;
     await act(async () => {

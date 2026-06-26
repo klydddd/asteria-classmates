@@ -39,16 +39,19 @@ export default function DashboardGrid() {
   }, []);
 
   useEffect(() => {
-    fetchStatus();
+    const initialFetch = window.setTimeout(fetchStatus, 0);
     const id = setInterval(fetchStatus, POLL_INTERVAL);
-    return () => clearInterval(id);
+    return () => {
+      window.clearTimeout(initialFetch);
+      clearInterval(id);
+    };
   }, [fetchStatus]);
 
   const cards = [
-    { label: "Dataset Clips", value: fmt(status?.dataset_stats?.total_clips) },
+    { label: "Training Speakers", value: fmt(status?.dataset_stats?.total_speakers) },
     { label: "Baseline WER", value: pct(status?.baseline_metrics?.wer) },
     { label: "Fine-tuned WER", value: pct(status?.finetuned_metrics?.wer) },
-    { label: "Model Version", value: status?.model_version ?? null },
+    { label: "Fine-tuned CER", value: pct(status?.finetuned_metrics?.cer) },
   ];
 
   return (
@@ -79,6 +82,7 @@ export default function DashboardGrid() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           <ComparisonChart
             baselineMetrics={status?.baseline_metrics}
+            previousFinetunedMetrics={status?.previous_finetuned_metrics}
             finetunedMetrics={status?.finetuned_metrics}
             datasetStats={status?.dataset_stats}
           />

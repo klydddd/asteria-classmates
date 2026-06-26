@@ -52,7 +52,7 @@ def transcribe_demo_audio(
         update={
             "model_path": (
                 str((workspace / model.model_path).resolve())
-                if model.id == "finetuned"
+                if model.id != "baseline"
                 else model.model_path
             )
         }

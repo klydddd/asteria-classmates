@@ -228,7 +228,7 @@ def test_build_job_status_and_download(
     assert jobs.status_code == 200
     assert jobs.json()[0]["id"] == submitted.json()["id"]
     assert status.status_code == 200
-    assert status.json()["dataset_available"] is True
+    assert status.json()["dataset_available"] is False  # built to "dataset", not "dataset_30spk"
     assert download.status_code == 200
     assert download.headers["content-type"] == "application/zip"
     with zipfile.ZipFile(io.BytesIO(download.content)) as archive:
@@ -240,9 +240,9 @@ def test_project_status_returns_dashboard_metrics(
     client: tuple[TestClient, Path],
 ) -> None:
     test_client, workspace = client
-    dataset = workspace / "dataset"
-    baseline = workspace / "benchmark" / "baseline"
-    finetuned = workspace / "benchmark" / "finetuned"
+    dataset = workspace / "dataset_30spk"
+    baseline = workspace / "benchmark" / "baseline_small_tl"
+    finetuned = workspace / "benchmark" / "colab_small_tl_30spk"
     incomplete_model = workspace / "model" / "a-incomplete"
     model = workspace / "model" / "bosesph-kapampangan-v1"
     later_model = workspace / "model" / "z-later"
@@ -289,6 +289,7 @@ def test_project_status_returns_dashboard_metrics(
             "source_counts": {"approved": 68},
         },
         "baseline_metrics": {"wer": 0.91, "cer": 0.52},
+        "previous_finetuned_metrics": None,
         "finetuned_metrics": {"wer": 0.75, "cer": 0.34},
         "model_available": True,
         "model_dir": "model/bosesph-kapampangan-v1",
@@ -308,6 +309,7 @@ def test_project_status_uses_none_for_missing_outputs(
         "dataset_available": False,
         "dataset_stats": None,
         "baseline_metrics": None,
+        "previous_finetuned_metrics": None,
         "finetuned_metrics": None,
         "model_available": False,
         "model_dir": None,
@@ -319,9 +321,9 @@ def test_project_status_ignores_malformed_artifacts_independently(
     client: tuple[TestClient, Path],
 ) -> None:
     test_client, workspace = client
-    dataset = workspace / "dataset"
-    baseline = workspace / "benchmark" / "baseline"
-    finetuned = workspace / "benchmark" / "finetuned"
+    dataset = workspace / "dataset_30spk"
+    baseline = workspace / "benchmark" / "baseline_small_tl"
+    finetuned = workspace / "benchmark" / "colab_small_tl_30spk"
     model = workspace / "model" / "bosesph-kapampangan-v1"
     dataset.mkdir(parents=True)
     baseline.mkdir(parents=True)
@@ -343,6 +345,7 @@ def test_project_status_ignores_malformed_artifacts_independently(
         "dataset_available": False,
         "dataset_stats": None,
         "baseline_metrics": {"wer": 0.91, "cer": 0.52},
+        "previous_finetuned_metrics": None,
         "finetuned_metrics": None,
         "model_available": True,
         "model_dir": "model/bosesph-kapampangan-v1",
@@ -369,8 +372,8 @@ def test_project_status_rejects_invalid_metric_artifacts(
     metrics: object,
 ) -> None:
     test_client, workspace = client
-    baseline = workspace / "benchmark" / "baseline"
-    finetuned = workspace / "benchmark" / "finetuned"
+    baseline = workspace / "benchmark" / "baseline_small_tl"
+    finetuned = workspace / "benchmark" / "colab_small_tl_30spk"
     baseline.mkdir(parents=True)
     finetuned.mkdir(parents=True)
     (baseline / "results.json").write_text(
@@ -429,8 +432,8 @@ def test_demo_options_return_controlled_choices(
                 "decoding_language": None,
             },
             {
-                "id": "finetuned",
-                "label": "BosesPH fine-tuned model",
+                "id": "finetuned_bosesph-kapampangan-v1",
+                "label": "Bosesph Kapampangan V1",
                 "model_path": "model/bosesph-kapampangan-v1/model",
                 "available": True,
                 "unavailable_reason": None,
@@ -442,7 +445,7 @@ def test_demo_options_return_controlled_choices(
     }
 
 
-def test_demo_options_disable_missing_finetuned_model(
+def test_demo_options_no_finetuned_model_shows_baseline_only(
     client: tuple[TestClient, Path],
 ) -> None:
     test_client, _ = client
@@ -450,14 +453,10 @@ def test_demo_options_disable_missing_finetuned_model(
     response = test_client.get("/demo/options")
 
     assert response.status_code == 200
-    assert response.json()["models"][1] == {
-        "id": "finetuned",
-        "label": "BosesPH fine-tuned model",
-        "model_path": "",
-        "available": False,
-        "unavailable_reason": "No local fine-tuned model found.",
-        "decoding_language": None,
-    }
+    models = response.json()["models"]
+    assert len(models) == 1
+    assert models[0]["id"] == "baseline"
+    assert response.json()["default_model_id"] == "baseline"
 
 
 def test_demo_options_use_first_sorted_complete_model(
@@ -498,7 +497,7 @@ def test_demo_options_ignore_candidate_symlink_outside_workspace(
     response = test_client.get("/demo/options")
 
     assert response.status_code == 200
-    assert response.json()["models"][1]["available"] is False
+    assert len(response.json()["models"]) == 1  # only baseline; symlinked candidate excluded
 
 
 def test_demo_options_ignore_nested_model_symlink_outside_workspace(
@@ -517,7 +516,7 @@ def test_demo_options_ignore_nested_model_symlink_outside_workspace(
     response = test_client.get("/demo/options")
 
     assert response.status_code == 200
-    assert response.json()["models"][1]["available"] is False
+    assert len(response.json()["models"]) == 1  # only baseline; symlinked model dir excluded
 
 
 def test_demo_options_ignore_external_model_config_symlink(
@@ -536,7 +535,7 @@ def test_demo_options_ignore_external_model_config_symlink(
     response = test_client.get("/demo/options")
 
     assert response.status_code == 200
-    assert response.json()["models"][1]["available"] is False
+    assert len(response.json()["models"]) == 1  # only baseline; config symlink excluded
 
 
 def test_demo_options_ignore_internal_model_symlink(
@@ -555,7 +554,7 @@ def test_demo_options_ignore_internal_model_symlink(
     response = test_client.get("/demo/options")
 
     assert response.status_code == 200
-    assert response.json()["models"][1]["available"] is False
+    assert len(response.json()["models"]) == 1  # only baseline; internal symlink excluded
 
 
 @pytest.mark.parametrize(
@@ -638,14 +637,14 @@ def test_select_demo_model_applies_model_specific_decoding(tmp_path: Path) -> No
     )
     finetuned, finetuned_language = demo_api.select_demo_model(
         options,
-        "finetuned",
+        "finetuned_local",
         "kapampangan",
     )
-    _, auto_language = demo_api.select_demo_model(options, "finetuned", "auto")
+    _, auto_language = demo_api.select_demo_model(options, "finetuned_local", "auto")
 
     assert baseline.id == "baseline"
     assert baseline_language is None
-    assert finetuned.id == "finetuned"
+    assert finetuned.id == "finetuned_local"
     assert finetuned_language == "ceb"
     assert auto_language is None
 
@@ -654,7 +653,7 @@ def test_select_demo_model_applies_model_specific_decoding(tmp_path: Path) -> No
     ("model_id", "language_id", "message"),
     [
         ("unknown", "kapampangan", "Unknown demo model: unknown"),
-        ("finetuned", "kapampangan", "No local fine-tuned model found."),
+        ("finetuned_nonexistent", "kapampangan", "Unknown demo model: finetuned_nonexistent"),
         ("baseline", "unknown", "Unknown demo language: unknown"),
     ],
 )
@@ -806,10 +805,10 @@ def test_demo_transcribe_deletes_upload_after_failure(
             "Unknown demo language",
         ),
         (
-            {"model_id": "finetuned", "language_id": "auto"},
+            {"model_id": "finetuned_nonexistent", "language_id": "auto"},
             "clip.wav",
             b"RIFF",
-            "No local fine-tuned model found",
+            "Unknown demo model",
         ),
         (
             {"model_id": "baseline", "language_id": "auto"},
@@ -932,7 +931,7 @@ def test_demo_transcribe_resolves_finetuned_model_and_decoding_language(
 
     response = test_client.post(
         "/demo/transcribe",
-        data={"model_id": "finetuned", "language_id": "kapampangan"},
+        data={"model_id": "finetuned_local", "language_id": "kapampangan"},
         files={"audio": ("clip.wav", wav_path.read_bytes(), "audio/wav")},
     )
     job = poll_job(test_client, response.json()["id"])

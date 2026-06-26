@@ -68,7 +68,7 @@ class TestGetProjectStatus:
     def test_with_dataset_stats(self, tmp_path: Path) -> None:
         from bosesph.mcp.tools import get_project_status
 
-        stats_dir = tmp_path / "dataset"
+        stats_dir = tmp_path / "dataset_30spk"
         stats_dir.mkdir()
         stats = {"total_clips": 100, "total_duration_seconds": 600.0}
         (stats_dir / "dataset_stats.json").write_text(
@@ -81,7 +81,7 @@ class TestGetProjectStatus:
     def test_with_baseline_metrics(self, tmp_path: Path) -> None:
         from bosesph.mcp.tools import get_project_status
 
-        metrics_dir = tmp_path / "benchmark" / "baseline"
+        metrics_dir = tmp_path / "benchmark" / "baseline_small_tl"
         metrics_dir.mkdir(parents=True)
         (metrics_dir / "results.json").write_text(
             json.dumps({"wer": 0.45, "cer": 0.22}), encoding="utf-8"
@@ -314,7 +314,7 @@ class TestMcpServerRegistration:
         from bosesph.mcp.server import mcp
 
         tool_list = mcp._tool_manager.list_tools()
-        assert len(tool_list) == 10
+        assert len(tool_list) == 11
 
     def test_resources_registered(self) -> None:
         from bosesph.mcp.server import mcp

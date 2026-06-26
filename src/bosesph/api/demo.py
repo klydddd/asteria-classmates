@@ -57,39 +57,50 @@ def _is_safe_model_tree(model_dir: Path, workspace: Path) -> bool:
         return False
 
 
-def _find_finetuned_model(workspace: Path) -> Path | None:
-    # Prefer the Colab-trained Whisper Small LoRA model (language=tl).
-    preferred = workspace / "model" / "colab_finetuned_model_tl"
-    if (
-        preferred.is_dir()
-        and (preferred / "model" / "config.json").is_file()
-    ):
-        return preferred
+def _make_model_label(dirname: str) -> str:
+    return " ".join(w.capitalize() for w in dirname.replace("_", " ").replace("-", " ").split())
 
-    # Fallback: scan outputs/model/ for any valid fine-tuned model.
+
+def _discover_finetuned_models(workspace: Path) -> list[DemoModelOption]:
+    """Return all valid fine-tuned models found in workspace/model/, sorted by name."""
     model_root = workspace / "model"
     if not model_root.is_dir():
-        return None
+        return []
 
-    return next(
-        (
-            child
-            for child in sorted(model_root.iterdir())
-            if child.is_dir()
+    models = []
+    for child in sorted(model_root.iterdir()):
+        if (
+            child.is_dir()
+            and not child.is_symlink()
             and _is_within_workspace(child, workspace)
-            and _is_within_workspace(child / "model", workspace)
-            and _is_safe_model_tree(child / "model", workspace)
             and (child / "model_card.md").is_file()
             and (child / "model" / "config.json").is_file()
-        ),
-        None,
-    )
+            and _is_safe_model_tree(child / "model", workspace)
+        ):
+            models.append(
+                DemoModelOption(
+                    id=f"finetuned_{child.name}",
+                    label=_make_model_label(child.name),
+                    model_path=str((child / "model").relative_to(workspace)),
+                    available=True,
+                    unavailable_reason=None,
+                    decoding_language=_read_decoding_language(child),
+                )
+            )
+    return models
 
 
 def discover_demo_options(workspace: Path) -> DemoOptions:
-    """Return the fixed demo choices and any valid local fine-tuned model."""
+    """Return the fixed demo choices and all valid local fine-tuned models."""
     workspace = workspace.resolve()
-    candidate = _find_finetuned_model(workspace)
+    finetuned_models = _discover_finetuned_models(workspace)
+
+    # Default to the 30-speaker Colab model if available, otherwise baseline.
+    default_model_id = "baseline"
+    for m in finetuned_models:
+        if "30speaker" in m.id:
+            default_model_id = m.id
+            break
 
     return DemoOptions(
         languages=[
@@ -111,25 +122,10 @@ def discover_demo_options(workspace: Path) -> DemoOptions:
                 model_path="openai/whisper-small",
                 available=True,
             ),
-            DemoModelOption(
-                id="finetuned",
-                label="BosesPH Whisper Small (LoRA fine-tuned)",
-                model_path=(
-                    str((candidate / "model").relative_to(workspace))
-                    if candidate
-                    else ""
-                ),
-                available=candidate is not None,
-                unavailable_reason=(
-                    None if candidate else "No local fine-tuned model found."
-                ),
-                decoding_language=(
-                    _read_decoding_language(candidate) if candidate else None
-                ),
-            ),
+            *finetuned_models,
         ],
         default_language_id="kapampangan",
-        default_model_id="baseline",
+        default_model_id=default_model_id,
     )
 
 

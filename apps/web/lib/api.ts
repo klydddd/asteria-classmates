@@ -2,6 +2,7 @@ export interface ProjectStatus {
   dataset_available: boolean;
   dataset_stats: Record<string, number> | null;
   baseline_metrics: { wer: number; cer: number } | null;
+  previous_finetuned_metrics: { wer: number; cer: number } | null;
   finetuned_metrics: { wer: number; cer: number } | null;
   model_available: boolean;
   model_dir: string | null;

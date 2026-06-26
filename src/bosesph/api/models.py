@@ -160,6 +160,7 @@ class ProjectStatus(BaseModel):
     dataset_available: bool = False
     dataset_stats: dict[str, Any] | None = None
     baseline_metrics: MetricSummary | None = None
+    previous_finetuned_metrics: MetricSummary | None = None
     finetuned_metrics: MetricSummary | None = None
     model_available: bool = False
     model_dir: str | None = None
