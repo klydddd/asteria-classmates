@@ -699,6 +699,19 @@ def test_demo_transcribe_scores_reference_and_deletes_upload(
     monkeypatch.setattr("bosesph.asr.load_model", fake_load_model)
     monkeypatch.setattr("bosesph.asr.transcribe_file", fake_transcribe)
 
+    from bosesph.asr import BenchmarkMetrics
+    monkeypatch.setattr(
+        "bosesph.asr.calculate_metrics",
+        lambda *args, **kwargs: BenchmarkMetrics(
+            model="baseline",
+            language="kapampangan",
+            wer=0.0,
+            cer=0.0,
+            test_clips=1,
+            total_duration_seconds=0.1,
+        ),
+    )
+
     response = test_client.post(
         "/demo/transcribe",
         data={

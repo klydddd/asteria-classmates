@@ -106,7 +106,7 @@ def discover_demo_options(workspace: Path) -> DemoOptions:
                 id="finetuned",
                 label="BosesPH fine-tuned model",
                 model_path=(
-                    str((candidate / "model").relative_to(workspace))
+                    (candidate / "model").relative_to(workspace).as_posix()
                     if candidate
                     else ""
                 ),

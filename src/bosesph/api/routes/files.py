@@ -76,7 +76,7 @@ def project_status(request: Request) -> ProjectStatus:
             ws / "benchmark" / "finetuned" / "results.json"
         ),
         model_available=model_dir is not None,
-        model_dir=str(model_dir.relative_to(ws)) if model_dir else None,
+        model_dir=model_dir.relative_to(ws).as_posix() if model_dir else None,
         model_version=model_dir.name if model_dir else None,
     )
 
