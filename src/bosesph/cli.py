@@ -112,6 +112,10 @@ def build_parser() -> ArgumentParser:
     transcribe_parser.add_argument(
         "--output", type=Path, default=None, help="output predictions CSV"
     )
+    transcribe_parser.add_argument(
+        "--limit", type=int, default=None,
+        help="max number of clips to transcribe (default: all)",
+    )
 
     evaluate_parser = commands.add_parser(
         "evaluate",
@@ -378,6 +382,82 @@ def build_parser() -> ArgumentParser:
         dest="lora_dropout",
         help="LoRA dropout rate (default: 0.05)",
     )
+
+    export_eval_colab_parser = commands.add_parser(
+        "export-eval-colab",
+        help="generate a Google Colab notebook to evaluate a fine-tuned Whisper model on GPU",
+    )
+    export_eval_colab_parser.add_argument(
+        "--dataset-drive-path",
+        required=True,
+        dest="dataset_drive_path",
+        help="Google Drive path to the dataset folder (must contain <split>.csv and audio/)",
+    )
+    export_eval_colab_parser.add_argument(
+        "--model-drive-path",
+        required=True,
+        dest="model_drive_path",
+        help="Google Drive path to the fine-tuned model folder",
+    )
+    export_eval_colab_parser.add_argument(
+        "--base-model",
+        default="openai/whisper-small",
+        dest="base_model",
+        help="HuggingFace model ID for the baseline (default: openai/whisper-small)",
+    )
+    export_eval_colab_parser.add_argument(
+        "--language",
+        default="tl",
+        help="transcription language for Whisper (default: tl)",
+    )
+    export_eval_colab_parser.add_argument(
+        "--eval-language",
+        default="kapampangan",
+        dest="eval_language",
+        help="language label for WER/CER evaluation (default: kapampangan)",
+    )
+    export_eval_colab_parser.add_argument(
+        "--split",
+        default="test",
+        help="dataset split to evaluate (default: test)",
+    )
+    export_eval_colab_parser.add_argument(
+        "--baseline-name",
+        default="Baseline Whisper Small",
+        dest="baseline_name",
+        help="label for baseline in the comparison report",
+    )
+    export_eval_colab_parser.add_argument(
+        "--finetuned-name",
+        default="Fine-tuned Whisper",
+        dest="finetuned_name",
+        help="label for the fine-tuned model in the comparison report",
+    )
+    export_eval_colab_parser.add_argument(
+        "--baseline-limit",
+        type=int,
+        default=None,
+        dest="baseline_limit",
+        help="limit number of samples transcribed for the baseline",
+    )
+    export_eval_colab_parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("colab_eval.ipynb"),
+        help="output notebook path (default: colab_eval.ipynb)",
+    )
+    export_eval_colab_parser.add_argument(
+        "--repo-url",
+        default=None,
+        dest="repo_url",
+        help="git URL to pip-install bosesph from (default: origin remote)",
+    )
+    export_eval_colab_parser.add_argument(
+        "--repo-ref",
+        default="main",
+        dest="repo_ref",
+        help="git branch/tag/commit to install (default: main)",
+    )
     return parser
 
 
@@ -520,6 +600,7 @@ def _run_transcribe(
     language: str | None,
     split: str,
     output: Path | None,
+    limit: int | None = None,
 ) -> int:
     from bosesph.asr import load_model, transcribe_file, transcribe_split
 
@@ -557,6 +638,7 @@ def _run_transcribe(
                 language=language,
                 output_path=output,
                 progress_fn=progress,
+                limit=limit,
             )
             print(f"\nWrote {len(results)} predictions to {output}")
             return 0
@@ -790,6 +872,45 @@ def _run_export_colab(
     return 0
 
 
+def _run_export_eval_colab(
+    *,
+    dataset_drive_path: str,
+    model_drive_path: str,
+    base_model: str,
+    language: str | None,
+    eval_language: str,
+    split: str,
+    baseline_name: str,
+    finetuned_name: str,
+    baseline_limit: int | None,
+    output: Path,
+    repo_url: str | None,
+    repo_ref: str,
+) -> int:
+    from bosesph.colab import ColabEvalConfig, write_eval_notebook
+
+    config = ColabEvalConfig(
+        dataset_drive_path=dataset_drive_path,
+        model_drive_path=model_drive_path,
+        base_model=base_model,
+        language=language,
+        eval_language=eval_language,
+        split=split,
+        baseline_name=baseline_name,
+        finetuned_name=finetuned_name,
+        baseline_limit=baseline_limit,
+        repo_url=_resolve_repo_url(repo_url),
+        repo_ref=repo_ref,
+    )
+    write_eval_notebook(config, output)
+
+    print(f"Colab eval notebook written to: {output}")
+    print("Next steps:")
+    print("  1. Open the notebook in Google Colab and set the runtime to GPU.")
+    print("  2. Run all cells — the comparison report is printed in the last cell.")
+    return 0
+
+
 def _run_compare(
     baseline: Path,
     finetuned: Path,
@@ -862,6 +983,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             language=args.language,
             split=args.split,
             output=args.output,
+            limit=args.limit,
         )
     if args.command == "evaluate":
         return _run_evaluate(
@@ -916,6 +1038,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     if args.command == "compare":
         return _run_compare(args.baseline, args.finetuned, args.output)
+    if args.command == "export-eval-colab":
+        return _run_export_eval_colab(
+            dataset_drive_path=args.dataset_drive_path,
+            model_drive_path=args.model_drive_path,
+            base_model=args.base_model,
+            language=args.language,
+            eval_language=args.eval_language,
+            split=args.split,
+            baseline_name=args.baseline_name,
+            finetuned_name=args.finetuned_name,
+            baseline_limit=args.baseline_limit,
+            output=args.output,
+            repo_url=args.repo_url,
+            repo_ref=args.repo_ref,
+        )
     return 2
 
 
