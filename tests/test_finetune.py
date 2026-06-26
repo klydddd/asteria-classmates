@@ -653,6 +653,17 @@ class TestFinetuneCLI:
         assert args.lora_r == 32
         assert args.lora_alpha == 64
 
+    def test_export_colab_parser_new_defaults(self) -> None:
+        from bosesph.cli import build_parser
+
+        args = build_parser().parse_args(
+            ["export-colab", "/tmp/ds", "--output", "/tmp/out.ipynb"]
+        )
+        assert args.base_model == "openai/whisper-small"
+        assert args.language is None
+        assert args.lora_r == 32
+        assert args.lora_alpha == 64
+
 
 # -----------------------------------------------------------------------
 # CLI: compare subcommand
