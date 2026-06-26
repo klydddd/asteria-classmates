@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import math
 import zipfile
 from pathlib import Path
 
@@ -16,41 +17,68 @@ from bosesph.api.settings import PathTraversalError, resolve_path
 router = APIRouter(tags=["files"])
 
 
+def _read_json(path: Path) -> dict[str, object] | None:
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _finite_float(value: object) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        converted = float(value)
+    except OverflowError:
+        return None
+    return converted if math.isfinite(converted) else None
+
+
+def _metric_summary(path: Path) -> dict[str, float] | None:
+    data = _read_json(path)
+    if data is None or "wer" not in data or "cer" not in data:
+        return None
+    wer = _finite_float(data["wer"])
+    cer = _finite_float(data["cer"])
+    if wer is None or cer is None:
+        return None
+    return {"wer": wer, "cer": cer}
+
+
 @router.get("/project-status", response_model=ProjectStatus)
 def project_status(request: Request) -> ProjectStatus:
-    """Return an aggregated snapshot of available pipeline outputs."""
+    """Return deterministic dashboard data from conventional output paths."""
     ws: Path = request.app.state.settings.workspace.resolve()
-    status = ProjectStatus()
+    dataset_stats = _read_json(ws / "dataset" / "dataset_stats.json")
+    model_root = ws / "model"
+    model_dir: Path | None = None
 
-    # Dataset
-    dataset_stats_path = ws / "dataset" / "dataset_stats.json"
-    if dataset_stats_path.is_file():
-        status.dataset_available = True
-        status.dataset_stats = json.loads(
-            dataset_stats_path.read_text(encoding="utf-8")
+    if model_root.is_dir():
+        model_dir = next(
+            (
+                child
+                for child in sorted(model_root.iterdir())
+                if child.is_dir() and (child / "model_card.md").is_file()
+            ),
+            None,
         )
 
-    # Benchmark — look for any results.json under benchmark/
-    benchmark_dir = ws / "benchmark"
-    if benchmark_dir.is_dir():
-        for results_file in sorted(benchmark_dir.rglob("results.json")):
-            status.benchmark_available = True
-            status.benchmark_results = json.loads(
-                results_file.read_text(encoding="utf-8")
-            )
-            break  # use the first one found
-
-    # Model
-    model_dir = ws / "model"
-    if model_dir.is_dir():
-        # Find the first subdirectory containing model files
-        for child in sorted(model_dir.iterdir()):
-            if child.is_dir() and (child / "model_card.md").is_file():
-                status.model_available = True
-                status.model_dir = str(child.relative_to(ws))
-                break
-
-    return status
+    return ProjectStatus(
+        dataset_available=dataset_stats is not None,
+        dataset_stats=dataset_stats,
+        baseline_metrics=_metric_summary(
+            ws / "benchmark" / "baseline" / "results.json"
+        ),
+        finetuned_metrics=_metric_summary(
+            ws / "benchmark" / "finetuned" / "results.json"
+        ),
+        model_available=model_dir is not None,
+        model_dir=str(model_dir.relative_to(ws)) if model_dir else None,
+        model_version=model_dir.name if model_dir else None,
+    )
 
 
 @router.get("/download-output")

@@ -6,10 +6,11 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from bosesph.api.jobs import JobManager
-from bosesph.api.routes import files, jobs, pipeline
+from bosesph.api.routes import demo, files, jobs, pipeline
 from bosesph.api.settings import ApiSettings, PathTraversalError
 from bosesph.asr import ASRError
 from bosesph.dataset import DatasetBuildError
@@ -44,6 +45,16 @@ def create_app() -> FastAPI:
         app.state.jobs.shutdown()
 
     app = FastAPI(title="BosesPH Toolkit API", lifespan=lifespan)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ],
+        allow_credentials=False,
+        allow_methods=["GET", "POST"],
+        allow_headers=["*"],
+    )
     app.state.settings = settings
     app.state.jobs = job_manager
 
@@ -77,4 +88,5 @@ def create_app() -> FastAPI:
     app.include_router(pipeline.router)
     app.include_router(jobs.router)
     app.include_router(files.router)
+    app.include_router(demo.router)
     return app

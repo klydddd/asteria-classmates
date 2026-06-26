@@ -147,15 +147,62 @@ class ApproveAllResponse(BaseModel):
     remaining: int
 
 
+class MetricSummary(BaseModel):
+    """WER/CER values displayed by the dashboard."""
+
+    wer: float
+    cer: float
+
+
 class ProjectStatus(BaseModel):
     """Aggregated project state for ``GET /project-status``."""
 
     dataset_available: bool = False
     dataset_stats: dict[str, Any] | None = None
-    benchmark_available: bool = False
-    benchmark_results: dict[str, Any] | None = None
+    baseline_metrics: MetricSummary | None = None
+    finetuned_metrics: MetricSummary | None = None
     model_available: bool = False
     model_dir: str | None = None
+    model_version: str | None = None
+
+
+class DemoLanguageOption(BaseModel):
+    """Controlled language choice for direct demo transcription."""
+
+    id: str
+    label: str
+    description: str
+
+
+class DemoModelOption(BaseModel):
+    """Controlled model choice for direct demo transcription."""
+
+    id: str
+    label: str
+    model_path: str
+    available: bool
+    unavailable_reason: str | None = None
+    decoding_language: str | None = None
+
+
+class DemoOptions(BaseModel):
+    """Available choices and defaults for the direct transcription demo."""
+
+    languages: list[DemoLanguageOption]
+    models: list[DemoModelOption]
+    default_language_id: str
+    default_model_id: str
+
+
+class DemoTranscriptionResult(BaseModel):
+    """Result produced by a direct single-audio transcription job."""
+
+    prediction: str
+    model_id: str
+    model_label: str
+    language_id: str
+    wer: float | None = None
+    cer: float | None = None
 
 
 class UploadResult(BaseModel):
