@@ -32,7 +32,7 @@ export default function ComparisonChart({
   // Power law scaling prediction: Error(D_target) = Error(D_current) * (D_current / D_target)^alpha
   // Assuming a target dataset of 100,000 clips and an empirical scaling exponent of 0.3
   const targetSize = 100000;
-  const currentSize = datasetStats?.total_clips || 4000;
+  const currentSize = datasetStats?.total_clips ?? 4000;
   const alpha = 0.3;
   const scalingFactor = Math.pow(currentSize / targetSize, alpha);
 
@@ -41,7 +41,7 @@ export default function ComparisonChart({
       name: "WER",
       Baseline: baselineMetrics ? Number((baselineMetrics.wer * 100).toFixed(1)) : 0,
       "Fine-tuned": finetunedMetrics ? Number((finetunedMetrics.wer * 100).toFixed(1)) : 0,
-      "Target (Predicted)": finetunedMetrics ? Number((finetunedMetrics.wer * scalingFactor * 100).toFixed(1)) : 0,
+      "Predicted": finetunedMetrics ? Number((finetunedMetrics.wer * scalingFactor * 100).toFixed(1)) : null,
     }
   ];
 
@@ -50,7 +50,7 @@ export default function ComparisonChart({
       name: "CER",
       Baseline: baselineMetrics ? Number((baselineMetrics.cer * 100).toFixed(1)) : 0,
       "Fine-tuned": finetunedMetrics ? Number((finetunedMetrics.cer * 100).toFixed(1)) : 0,
-      "Target (Predicted)": finetunedMetrics ? Number((finetunedMetrics.cer * scalingFactor * 100).toFixed(1)) : 0,
+      "Predicted": finetunedMetrics ? Number((finetunedMetrics.cer * scalingFactor * 100).toFixed(1)) : null,
     }
   ];
 
@@ -80,36 +80,38 @@ export default function ComparisonChart({
                 cursor={{ fill: "transparent" }}
               />
               <Legend wrapperStyle={{ paddingTop: "20px" }} onMouseEnter={(o) => setHoveredBar(o.dataKey)} onMouseLeave={() => setHoveredBar(null)} />
-              <Bar 
-                dataKey="Baseline" 
-                fill="#17231b" 
-                radius={[0, 4, 4, 0]} 
-                barSize={40} 
+              <Bar
+                name="Baseline"
+                dataKey="Baseline"
+                fill="#17231b"
+                radius={[0, 4, 4, 0]}
+                barSize={40}
                 fillOpacity={getOpacity("Baseline")}
-                onMouseEnter={() => setHoveredBar("Baseline")} 
-                onMouseLeave={() => setHoveredBar(null)} 
-              />
-              <Bar 
-                dataKey="Fine-tuned" 
-                fill="#b33a2b" 
-                radius={[0, 4, 4, 0]} 
-                barSize={40} 
-                fillOpacity={getOpacity("Fine-tuned")}
-                onMouseEnter={() => setHoveredBar("Fine-tuned")} 
+                onMouseEnter={() => setHoveredBar("Baseline")}
                 onMouseLeave={() => setHoveredBar(null)}
               />
               <Bar
-                name="Target (Predicted)"
-                dataKey="Target (Predicted)"
+                name="Fine-tuned"
+                dataKey="Fine-tuned"
                 fill="#b33a2b"
-                fillOpacity={hoveredBar && hoveredBar !== "Target (Predicted)" ? 0 : 0.15}
+                radius={[0, 4, 4, 0]}
+                barSize={40}
+                fillOpacity={getOpacity("Fine-tuned")}
+                onMouseEnter={() => setHoveredBar("Fine-tuned")}
+                onMouseLeave={() => setHoveredBar(null)}
+              />
+              <Bar
+                name="Predicted"
+                dataKey="Predicted"
+                fill="#b33a2b"
+                fillOpacity={hoveredBar && hoveredBar !== "Predicted" ? 0 : 0.15}
                 stroke="#b33a2b"
                 strokeDasharray="4 4"
                 strokeWidth={2}
                 radius={[0, 4, 4, 0]}
                 barSize={40}
-                strokeOpacity={getOpacity("Target (Predicted)")}
-                onMouseEnter={() => setHoveredBar("Target (Predicted)")} 
+                strokeOpacity={getOpacity("Predicted")}
+                onMouseEnter={() => setHoveredBar("Predicted")}
                 onMouseLeave={() => setHoveredBar(null)}
               />
             </BarChart>
@@ -126,38 +128,38 @@ export default function ComparisonChart({
                 cursor={{ fill: "transparent" }}
               />
               <Legend wrapperStyle={{ paddingTop: "20px" }} onMouseEnter={(o) => setHoveredBar(o.dataKey)} onMouseLeave={() => setHoveredBar(null)} />
-              <Bar 
+              <Bar
                 name="Baseline"
-                dataKey="Baseline" 
-                fill="#17231b" 
-                radius={[0, 4, 4, 0]} 
+                dataKey="Baseline"
+                fill="#17231b"
+                radius={[0, 4, 4, 0]}
                 barSize={40}
                 fillOpacity={getOpacity("Baseline")}
-                onMouseEnter={() => setHoveredBar("Baseline")} 
-                onMouseLeave={() => setHoveredBar(null)} 
-              />
-              <Bar 
-                name="Fine-tuned"
-                dataKey="Fine-tuned" 
-                fill="#b33a2b" 
-                radius={[0, 4, 4, 0]} 
-                barSize={40} 
-                fillOpacity={getOpacity("Fine-tuned")}
-                onMouseEnter={() => setHoveredBar("Fine-tuned")} 
+                onMouseEnter={() => setHoveredBar("Baseline")}
                 onMouseLeave={() => setHoveredBar(null)}
               />
               <Bar
-                name="Target (Predicted)"
-                dataKey="Target (Predicted)"
+                name="Fine-tuned"
+                dataKey="Fine-tuned"
                 fill="#b33a2b"
-                fillOpacity={hoveredBar && hoveredBar !== "Target (Predicted)" ? 0 : 0.15}
+                radius={[0, 4, 4, 0]}
+                barSize={40}
+                fillOpacity={getOpacity("Fine-tuned")}
+                onMouseEnter={() => setHoveredBar("Fine-tuned")}
+                onMouseLeave={() => setHoveredBar(null)}
+              />
+              <Bar
+                name="Predicted"
+                dataKey="Predicted"
+                fill="#b33a2b"
+                fillOpacity={hoveredBar && hoveredBar !== "Predicted" ? 0 : 0.15}
                 stroke="#b33a2b"
                 strokeDasharray="4 4"
                 strokeWidth={2}
                 radius={[0, 4, 4, 0]}
                 barSize={40}
-                strokeOpacity={getOpacity("Target (Predicted)")}
-                onMouseEnter={() => setHoveredBar("Target (Predicted)")} 
+                strokeOpacity={getOpacity("Predicted")}
+                onMouseEnter={() => setHoveredBar("Predicted")}
                 onMouseLeave={() => setHoveredBar(null)}
               />
             </BarChart>
